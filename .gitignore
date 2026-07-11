@@ -1,0 +1,11 @@
+node_modules/
+docs/
+edge-game-placement-project.md
+*.log
+!results/raw/*.log
+.env
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+clab-*/
+.clab/
