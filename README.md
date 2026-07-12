@@ -89,3 +89,11 @@ in the gap is server-side queueing. Write-up: [results/derisk.md](results/derisk
 | mineflayer | 4.37.1 |
 | node | v22.22.2 |
 | host | Fedora, i7-14700HX, 16 GB RAM |
+
+## Roadmap
+
+- [x] Single-node localhost baseline (probe RTT vs bot RTT under load)
+- [ ] Containerlab edge-cloud topology with multiple capped nodes
+- [ ] Automated sweep across bot counts and node placements
+- [ ] Train a latency predictor on measured data and compare against the
+      analytical model's node ranking
