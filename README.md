@@ -29,16 +29,21 @@ predictor trained on measured data.
 
 ## Method
 
-Two latency numbers are recorded for every configuration:
+The design compares two latency numbers per configuration:
 
-- **probe RTT** — a plain network probe. This is what the analytical model
-  predicts.
-- **bot RTT** — action-to-response time seen by an actual game client. Network
-  path plus whatever is happening inside the server.
+- **bot RTT** — action-to-response time seen by an actual game client (chat
+  echo round-trip). Network path plus whatever is happening inside the server.
+  This is what's measured so far.
+- **probe RTT** — a plain network probe, no server logic in the path. This is
+  what the analytical model predicts, and it is the baseline the bot RTT is
+  meant to be compared against. Not captured yet — the current runs record
+  bot RTT only, so the network component is held constant by construction
+  (everything on localhost) rather than measured directly.
 
 How far these two diverge under load is the quantity of interest. If the
-divergence is large enough, a placement algorithm ranking nodes by the first
-number will get the ranking wrong.
+divergence is large enough, a placement algorithm ranking nodes by probe RTT
+will get the ranking wrong. Adding a concurrent probe is the next step, so the
+divergence can be shown per-run instead of inferred from a fixed-network setup.
 
 ## Layout
 
@@ -106,7 +111,8 @@ one-off multi-second server stall; median/p95 stay on trend.) Write-ups:
 
 ## Roadmap
 
-- [x] Single-node localhost baseline (probe RTT vs bot RTT under load)
+- [x] Single-node localhost baseline (bot RTT under load, fixed zero network)
+- [ ] Concurrent probe RTT baseline, to measure network vs server split per run
 - [ ] Containerlab edge-cloud topology with multiple capped nodes
 - [ ] Automated sweep across bot counts and node placements
 - [ ] Train a latency predictor on measured data and compare against the
