@@ -69,17 +69,23 @@ mid-experiment.
 
 ## Results so far
 
-First experiment, single server on localhost, only the bot count changed
+Full load sweep, single server on localhost, only the bot count changed
 (so network distance is fixed at zero):
 
-| ms | 1 bot | 25 bots |
-|---|---|---|
-| p95 | ~89 | 326 |
-| p99 | ~89 | 770 |
-| max | 89 | 1159 |
+| ms  | 1 bot | 5 | 10 | 20 | 30 | 40 |
+|-----|-------|---|----|----|----|----|
+| p50 | 2     | 3 | 3  | 4  | 8  | 40 |
+| p95 | 15    | 51| 54 | 63 | 95 | 224 |
+| p99 | 81    | 75| 929*| 274| 398| 583 |
+| max | 81    | 133| 1306*| 603| 704| 1241 |
 
-The analytical model predicts identical latency for both columns. Everything
-in the gap is server-side queueing. Write-up: [results/derisk.md](results/derisk.md).
+The analytical model predicts an identical latency for every column, because
+distance and bandwidth never move. Everything in the gap is server-side
+queueing — median grows ~20× and p95 ~15× across the sweep, and container CPU
+pins at the 0.5-core cap exactly where N=40 blows up. (`*` N=10 tail caught a
+one-off multi-second server stall; median/p95 stay on trend.) Write-ups:
+[results/sweep.md](results/sweep.md), earlier de-risk in
+[results/derisk.md](results/derisk.md).
 
 ## Environment
 
