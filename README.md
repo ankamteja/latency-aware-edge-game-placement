@@ -12,13 +12,17 @@ inside the server can exceed the network delay that edge placement was supposed
 to save. And since these algorithms are almost always evaluated in simulators
 built on the same model, the error never shows up.
 
-While some edge placement approaches do consider resource constraints, they use
-them for admission control and cost accounting — not as a continuous factor in
-real-time latency prediction. Few model server load as a live input to the
-predicted latency itself, and fewer still do so for latency-sensitive
-interactive workloads like gaming, where the tail matters more than the mean.
-This project addresses that gap: it trains a load-aware latency model directly
-from empirical measurements and uses it to drive placement decisions.
+Server load is not ignored in practice — it is just wired to a different job
+than placement latency. Autoscalers and load balancers read it as a *threshold*
+(scale out, or route away, when CPU crosses a line). Cost models read it as a
+roughly *linear* billing term. Queueing-aware placement does put a delay term in
+the objective, but from an *analytical* M/M/1-style model, not from measurement.
+In every one of these the load→latency relationship is either reacted to after
+the placement decision or assumed in closed form — never learned from a real
+workload and fed back into the placement ranking itself. This project targets
+exactly that seam, for tail-sensitive interactive workloads (gaming), where the
+p99 the analytical model omits is the number that actually decides whether the
+placement was any good.
 
 This repo measures that error on a real (emulated) testbed: an edge-cloud
 topology built with Containerlab, running an actual Minecraft (Paper) server
@@ -44,6 +48,37 @@ How far these two diverge under load is the quantity of interest. If the
 divergence is large enough, a placement algorithm ranking nodes by probe RTT
 will get the ranking wrong. Adding a concurrent probe is the next step, so the
 divergence can be shown per-run instead of inferred from a fixed-network setup.
+
+## Positioning
+
+The pieces already exist — separately. Server load is measured everywhere; it is
+just never assembled into a *measured* load→latency term inside the placement
+decision:
+
+| System | Reads load as | Acts | Predicts latency? |
+|---|---|---|---|
+| Autoscaler | threshold (CPU > X) | after placement | no |
+| Load balancer | relative (least-load) | per request, after placement | no |
+| Cost / billing model | ~linear utilization term | accounting | no |
+| Queueing-aware placement | analytical M/M/1 delay | at placement | modeled, not measured |
+
+Two reasons the join is missing. First, the load→latency curve is nonlinear and
+tail-heavy — delay grows like `1/(1 − utilization)`, flat until the node is
+nearly saturated, then vertical — so it does not drop cleanly into a closed-form
+placement objective, and the simulators used to evaluate placement inherit the
+same load-blind model. Second, cloud nodes rarely saturate (you autoscale first),
+so the coupling stayed invisible; edge nodes are small and capped and *cannot*
+scale out, so queueing delay resurfaces exactly where placement is supposed to
+help.
+
+**Novelty, stated narrowly (and defensibly):** learn the load→latency curve
+*empirically* from a real interactive workload, then use it as the latency term
+that *ranks* candidate nodes — rather than reacting to load after placement, or
+assuming its shape in closed form. The claim is not "nobody uses load"; it is
+"nobody measures the load→latency relationship for a tail-sensitive interactive
+workload and puts it into the placement ranking." The load sweep below is the
+first evidence that the term being omitted is large (p95 up ~15× at fixed
+network distance, CPU pinned at the cap exactly where it explodes).
 
 ## Layout
 

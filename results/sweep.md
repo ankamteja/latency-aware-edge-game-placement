@@ -65,8 +65,17 @@ run — the load was sustained at N in every row, no dropouts.
 
 Confirms and extends the de-risk result across a full load sweep: at fixed
 (zero) network distance, tail RTT grows ~15× while the analytical model's
-prediction stays constant. This proves the model is *incomplete* (it omits a
-term that moves latency by 15×). It does not yet prove the model picks the
-*wrong node* — that needs two nodes where the model ranks near-and-loaded above
-far-and-idle while measured RTT ranks them the other way. That crossover, plus
-a concurrent probe-RTT baseline, is the remaining work.
+prediction stays constant. This is the first evidence for the claim in the
+README's Positioning section — that the term placement models omit (measured
+load→latency) is not a rounding error but the dominant one under load: p95 up
+~15×, and container CPU pinned at the 0.5-core cap exactly where it explodes,
+which is the causal link (no spare compute → ticks run long → actions queue).
+
+Scope, stated precisely. This proves the model is *incomplete* — it omits a
+term that moves latency by ~15× at a single node. It does **not** yet prove the
+model picks the *wrong node*: that needs two nodes where the model ranks
+near-and-loaded above far-and-idle while measured RTT ranks them the other way
+(the crossover). And it does not yet isolate how much of the tail is server
+queueing versus load-generator contention, since bot and server share a host —
+that needs the concurrent probe-RTT baseline. Both are the remaining work
+before the wrong-node claim can be made.
