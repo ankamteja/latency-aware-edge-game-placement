@@ -152,3 +152,15 @@ one-off multi-second server stall; median/p95 stay on trend.) Write-ups:
 - [ ] Automated sweep across bot counts and node placements
 - [ ] Train a latency predictor on measured data and compare against the
       analytical model's node ranking
+
+## Reading the results
+
+Raw per-run logs live under `results/`, one file per sweep. Every run records
+bot RTT samples only — no probe RTT yet — so a column is comparable to another
+column in the same table, but not to a number from a different network setup.
+When the probe baseline lands, each run will carry both series and the
+divergence can be read directly instead of inferred.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
