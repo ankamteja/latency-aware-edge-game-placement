@@ -1,0 +1,81 @@
+# Edge-cloud testbed for latency-aware game server placement.
+#
+#   client ──(eth1, 10.0.1.0/30)── edge    small node,  cpu 0.5,  low  netem delay
+#     │
+#     └──────(eth2, 10.0.2.0/30)── cloud   large node,  cpu 4.0,  high netem delay
+#
+# The two links are the "placement choice": pointing the bots at 10.0.1.2 places
+# the game on the edge, 10.0.2.2 places it on the cloud. Network distance is
+# emulated with netem (see netem.sh); server capacity is capped with the Linux
+# CFS quota that Docker's `cpu:` field sets.
+#
+# Deploy:  ./up.sh          Tear down: ./down.sh          Check: ./verify.sh
+name: edgegame
+
+topology:
+  nodes:
+
+    # ---- load generator -------------------------------------------------
+    # Runs the mineflayer bots and the latency probes. Not CPU-capped: the
+    # measuring instrument must never be the bottleneck. Pinned to its own
+    # cores so it cannot steal CPU from the servers it is measuring.
+    client:
+      kind: linux
+      image: edgegame-client:1        # built by up.sh from Dockerfile.client
+      cpu-set: "8-23"
+      cmd: sleep infinity
+      binds:
+        - ../bots:/bots            # bot.js, probe.js and node_modules
+        - ./out:/out               # where measurements are written
+      exec:
+        - ip addr add 10.0.1.1/30 dev eth1
+        - ip link set eth1 up
+        - ip addr add 10.0.2.1/30 dev eth2
+        - ip link set eth2 up
+
+    # ---- edge node ------------------------------------------------------
+    # Deliberately small. Edge sites are cheap, power- and space-constrained
+    # boxes; 0.5 CPU is the whole premise of the experiment, not a tuning knob
+    # discovered from the data.
+    edge:
+      kind: linux
+      image: itzg/minecraft-server
+      cpu: 0.5
+      cpu-set: "0-1"
+      memory: 2G
+      binds:
+        - ./nodes/edge:/data
+      env:
+        EULA: "TRUE"
+        ONLINE_MODE: "FALSE"
+        TYPE: CUSTOM                                  # run the cached jar,
+        CUSTOM_SERVER: /data/paper-1.21.4-232.jar     # never phone papermc.io
+        MEMORY: 1G
+      exec:
+        - ip addr add 10.0.1.2/30 dev eth1
+        - ip link set eth1 up
+
+    # ---- cloud node -----------------------------------------------------
+    # Deliberately large. A regional datacentre has compute to spare; what it
+    # does not have is proximity, which netem supplies as extra delay.
+    cloud:
+      kind: linux
+      image: itzg/minecraft-server
+      cpu: 4
+      cpu-set: "2-7"
+      memory: 4G
+      binds:
+        - ./nodes/cloud:/data
+      env:
+        EULA: "TRUE"
+        ONLINE_MODE: "FALSE"
+        TYPE: CUSTOM
+        CUSTOM_SERVER: /data/paper-1.21.4-232.jar
+        MEMORY: 2G
+      exec:
+        - ip addr add 10.0.2.2/30 dev eth1
+        - ip link set eth1 up
+
+  links:
+    - endpoints: ["client:eth1", "edge:eth1"]
+    - endpoints: ["client:eth2", "cloud:eth1"]

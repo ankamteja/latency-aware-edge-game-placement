@@ -1,0 +1,14 @@
+# Load-generator image.
+#
+# The stock node image has Node.js but no networking tools, and we need two:
+#   iproute2      - the `ip` command, used to put addresses on the two
+#                   data-plane interfaces containerlab wires up
+#   iputils-ping  - ICMP ping, our purest "network only" latency probe
+#   procps        - pkill, used to stop the bots cleanly between runs
+#
+# Built by up.sh as edgegame-client:1.
+FROM node:22-bookworm
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends iproute2 iputils-ping procps \
+ && rm -rf /var/lib/apt/lists/*
