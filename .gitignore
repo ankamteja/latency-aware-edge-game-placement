@@ -1,11 +1,21 @@
 node_modules/
-docs/
+
+# personal working notes, not part of the repo docs
 edge-game-placement-project.md
+
 *.log
-!results/raw/*.log
+!results/raw/**/*.log
 .env
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# containerlab generated state
 clab-*/
 .clab/
+
+# per-node server data (server jar + world), rebuilt by topology/prepare.sh
+topology/nodes/
+
+# collector scratch space (copied into results/raw/ at the end of a run)
+topology/out/
