@@ -15,6 +15,10 @@ first matters, and every command is spelled out flag by flag.
 | 5 | [05-runbook.md](05-runbook.md) | The step-by-step procedure to run a collection from a cold machine. |
 | 6 | [06-troubleshooting.md](06-troubleshooting.md) | Every failure hit so far and the fix. Read this when something breaks. |
 
+[HANDOFF.md](HANDOFF.md) is the one-file summary of the whole project — what
+exists, what it showed, what will bite you, and the standing constraints.
+Start there if you are picking this up cold.
+
 ## Where the project currently stands
 
 ```
