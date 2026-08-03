@@ -77,11 +77,30 @@ grep -c ',kicked'  bot.csv      # must be 0
 cat meta.json                   # players_held must equal bots
 ```
 
-A useful sanity number: with N bots each sending one chat message per second,
-`grep -c ',rtt,'` should come out near `N x (idle+join+steady seconds)` minus
-the idle period. Several times that means bots are sending faster than
-intended - exactly the bug that
-[06-troubleshooting.md §6.7](06-troubleshooting.md) describes.
+**The sample count is the regression test for the respawn bug**, so make it
+exact. Each bot sends one chat message per second, and the bots only exist from
+the moment they join, so the whole file should hold
+
+```
+about  N x duration           samples inside the steady window
+plus   up to N x join_wait     from the staggered join (join_wait = N/2 + 10)
+```
+
+For `edge-40bots` with the defaults that is ~4800 in the steady window and
+~5200 in the file - and the run measured 4779 and 5236. **Several times that
+means bots are sending faster than intended**, which is the bug in
+[06-troubleshooting.md §6.2](06-troubleshooting.md). Restrict the count to the
+steady window using the timestamps in `meta.json` if you want the tight number:
+
+```bash
+python3 - <<'PY'
+import json
+m = json.load(open('meta.json'))
+n = sum(1 for l in open('bot.csv')
+        if ',rtt,' in l and m['steady_start_ms'] <= int(l.split(',')[0]) <= m['steady_end_ms'])
+print(n, 'expected about', m['bots'] * m['duration_seconds'])
+PY
+```
 
 Delete the smoke run when satisfied:
 
