@@ -1,0 +1,15 @@
+{
+  "tag": "run1",
+  "target": "edge",
+  "target_ip": "10.0.1.2",
+  "bots": 20,
+  "players_held": 20,
+  "idle_seconds": 20,
+  "duration_seconds": 120,
+  "bots_start_ms": 1785733431777,
+  "steady_start_ms": 1785733451846,
+  "steady_end_ms": 1785733572567,
+  "cpu_max": "50000 100000",
+  "cpuset": "0-1",
+  "netem_delay": "delay 2.5ms"
+}

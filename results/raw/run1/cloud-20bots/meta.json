@@ -1,0 +1,15 @@
+{
+  "tag": "run1",
+  "target": "cloud",
+  "target_ip": "10.0.2.2",
+  "bots": 20,
+  "players_held": 20,
+  "idle_seconds": 20,
+  "duration_seconds": 120,
+  "bots_start_ms": 1785734578112,
+  "steady_start_ms": 1785734598193,
+  "steady_end_ms": 1785734718275,
+  "cpu_max": "400000 100000",
+  "cpuset": "2-7",
+  "netem_delay": "delay 20ms"
+}
