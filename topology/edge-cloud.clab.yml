@@ -1,13 +1,40 @@
 # Edge-cloud testbed for latency-aware game server placement.
 #
-#   client ──(eth1, 10.0.1.0/30)── edge    small node,  cpu 0.5,  low  netem delay
+#   client ──(eth1, 10.0.1.0/30)── edge1   0.5 core   nearest, weakest
 #     │
-#     └──────(eth2, 10.0.2.0/30)── cloud   large node,  cpu 4.0,  high netem delay
+#     ├──────(eth2, 10.0.2.0/30)── edge2   1.0 core
+#     │
+#     ├──────(eth3, 10.0.3.0/30)── edge3   2.0 cores
+#     │
+#     └──────(eth4, 10.0.4.0/30)── cloud   4.0 cores  furthest, strongest
 #
-# The two links are the "placement choice": pointing the bots at 10.0.1.2 places
-# the game on the edge, 10.0.2.2 places it on the cloud. Network distance is
-# emulated with netem (see netem.sh); server capacity is capped with the Linux
-# CFS quota that Docker's `cpu:` field sets.
+# Which IP the bots dial IS the placement decision. Four candidates, so the
+# question stops being "A or B" and becomes a ranking - which is what a
+# placement algorithm actually produces.
+#
+# Two properties are varied, and they are varied in different places on
+# purpose:
+#
+#   CAPACITY is structural - it needs a redeploy, so it lives here. The ladder
+#   0.5 / 1 / 2 / 4 cores exists so the capacity ratio can be shown to MOVE the
+#   crossover, rather than being one convenient gap chosen in advance.
+#
+#   DISTANCE is a runtime knob - netem is applied after deploy by netem.sh, so
+#   it costs nothing to change. `./netem.sh ladder` gives the realistic
+#   tradeoff where closer is weaker; `./netem.sh flat` puts every edge at the
+#   same distance, which isolates capacity from distance. Same lab, no redeploy.
+#
+# Server capacity is capped with the Linux CFS quota that Docker's `cpu:` field
+# sets; cpu-set ranges are disjoint so no node can steal CPU from another, and
+# the load generator cannot steal CPU from the servers it is measuring.
+#
+# The four servers are identical apart from cpu, cpu-set, memory and heap:
+# same image, same jar, same world, same settings. TYPE: CUSTOM runs the jar
+# already sitting in /data - the default PAPER type re-checks api.papermc.io on
+# every start, and one network hiccup then stops the whole testbed booting.
+#
+# Node identity (addresses, expected cpu.max) is duplicated in nodes.env, which
+# every script reads. Keep the two in step.
 #
 # Deploy:  ./up.sh          Tear down: ./down.sh          Check: ./verify.sh
 name: edgegame
@@ -17,12 +44,12 @@ topology:
 
     # ---- load generator -------------------------------------------------
     # Runs the mineflayer bots and the latency probes. Not CPU-capped: the
-    # measuring instrument must never be the bottleneck. Pinned to its own
-    # cores so it cannot steal CPU from the servers it is measuring.
+    # measuring instrument must never be the bottleneck. Pinned to its own 16
+    # cores, disjoint from every server.
     client:
       kind: linux
       image: edgegame-client:1        # built by up.sh from Dockerfile.client
-      cpu-set: "8-23"
+      cpu-set: "12-27"
       cmd: sleep infinity
       binds:
         - ../bots:/bots            # bot.js, probe.js and node_modules
@@ -32,37 +59,79 @@ topology:
         - ip link set eth1 up
         - ip addr add 10.0.2.1/30 dev eth2
         - ip link set eth2 up
+        - ip addr add 10.0.3.1/30 dev eth3
+        - ip link set eth3 up
+        - ip addr add 10.0.4.1/30 dev eth4
+        - ip link set eth4 up
 
-    # ---- edge node ------------------------------------------------------
-    # Deliberately small. Edge sites are cheap, power- and space-constrained
-    # boxes; 0.5 CPU is the whole premise of the experiment, not a tuning knob
-    # discovered from the data.
-    edge:
+    # ---- edge1: nearest and weakest -------------------------------------
+    # The node a distance-only placement model picks every single time. An
+    # edge site is a cheap box in a cabinet with a power and cooling budget;
+    # small is the defining property, not a tuning knob.
+    edge1:
       kind: linux
       image: itzg/minecraft-server
       cpu: 0.5
       cpu-set: "0-1"
       memory: 2G
       binds:
-        - ./nodes/edge:/data
+        - ./nodes/edge1:/data
       env:
         EULA: "TRUE"
         ONLINE_MODE: "FALSE"
-        TYPE: CUSTOM                                  # run the cached jar,
-        CUSTOM_SERVER: /data/paper-1.21.4-232.jar     # never phone papermc.io
+        TYPE: CUSTOM
+        CUSTOM_SERVER: /data/paper-1.21.4-232.jar
         MEMORY: 1G
       exec:
         - ip addr add 10.0.1.2/30 dev eth1
         - ip link set eth1 up
 
-    # ---- cloud node -----------------------------------------------------
-    # Deliberately large. A regional datacentre has compute to spare; what it
-    # does not have is proximity, which netem supplies as extra delay.
+    # ---- edge2: a mid-sized edge site -----------------------------------
+    edge2:
+      kind: linux
+      image: itzg/minecraft-server
+      cpu: 1
+      cpu-set: "2-3"
+      memory: 2G
+      binds:
+        - ./nodes/edge2:/data
+      env:
+        EULA: "TRUE"
+        ONLINE_MODE: "FALSE"
+        TYPE: CUSTOM
+        CUSTOM_SERVER: /data/paper-1.21.4-232.jar
+        MEMORY: 1G
+      exec:
+        - ip addr add 10.0.2.2/30 dev eth1
+        - ip link set eth1 up
+
+    # ---- edge3: a large edge site ---------------------------------------
+    edge3:
+      kind: linux
+      image: itzg/minecraft-server
+      cpu: 2
+      cpu-set: "4-6"
+      memory: 3G
+      binds:
+        - ./nodes/edge3:/data
+      env:
+        EULA: "TRUE"
+        ONLINE_MODE: "FALSE"
+        TYPE: CUSTOM
+        CUSTOM_SERVER: /data/paper-1.21.4-232.jar
+        MEMORY: 1G
+      exec:
+        - ip addr add 10.0.3.2/30 dev eth1
+        - ip link set eth1 up
+
+    # ---- cloud: furthest and strongest ----------------------------------
+    # A regional datacentre has compute to spare; what it does not have is
+    # proximity, which netem supplies as extra delay.
     cloud:
       kind: linux
       image: itzg/minecraft-server
       cpu: 4
-      cpu-set: "2-7"
+      cpu-set: "7-11"
       memory: 4G
       binds:
         - ./nodes/cloud:/data
@@ -73,9 +142,11 @@ topology:
         CUSTOM_SERVER: /data/paper-1.21.4-232.jar
         MEMORY: 2G
       exec:
-        - ip addr add 10.0.2.2/30 dev eth1
+        - ip addr add 10.0.4.2/30 dev eth1
         - ip link set eth1 up
 
   links:
-    - endpoints: ["client:eth1", "edge:eth1"]
-    - endpoints: ["client:eth2", "cloud:eth1"]
+    - endpoints: ["client:eth1", "edge1:eth1"]
+    - endpoints: ["client:eth2", "edge2:eth1"]
+    - endpoints: ["client:eth3", "edge3:eth1"]
+    - endpoints: ["client:eth4", "cloud:eth1"]
