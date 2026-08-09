@@ -10,11 +10,15 @@
 //      inside the server, which is exactly the term the analytical placement
 //      model cannot see.
 //
-// Usage: node bot.js [N] [host] [port]
-//   N    number of bots (default 1; usernames bot0..bot(N-1) must be opped
-//        server-side or the vanilla chat spam filter kicks them)
-//   host server to dial - THIS is the placement decision (default localhost)
-//   port server port (default 25565)
+// Usage: node bot.js [N] [host] [port] [--tag=<name>]
+//   N     number of bots (default 1; usernames bot0..bot(N-1) must be opped
+//         server-side or the vanilla chat spam filter kicks them)
+//   host  server to dial - THIS is the placement decision (default localhost)
+//   port  server port (default 25565)
+//   --tag a marker that does nothing except appear in this process's command
+//         line, so a driver loading several nodes at once can stop the bots
+//         for ONE target with `pkill -f 'bot[.]js.*--tag=edge1'` instead of
+//         killing every bot on the client
 //
 // Output: one CSV line per event on stdout
 //   epoch_ms,bot<i>,rtt,<ms>      a latency sample
@@ -28,9 +32,11 @@
 //  "<i> RTT: <ms>" format instead.)
 const mineflayer = require('mineflayer')
 
-const N = parseInt(process.argv[2]) || 1
-const HOST = process.argv[3] || 'localhost'
-const PORT = parseInt(process.argv[4]) || 25565
+// --tag is only a process-line marker; drop it before reading positionals.
+const argv = process.argv.slice(2).filter(a => !a.startsWith('--tag='))
+const N = parseInt(argv[0]) || 1
+const HOST = argv[1] || 'localhost'
+const PORT = parseInt(argv[2]) || 25565
 
 const log = (i, ...rest) => console.log([Date.now(), 'bot' + i, ...rest].join(','))
 

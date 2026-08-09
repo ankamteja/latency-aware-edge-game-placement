@@ -16,15 +16,20 @@
 // In-game action latency - the thing a player actually feels - is measured by
 // bot.js instead, because it has to ride the game thread.
 //
-// Usage: node probe.js <host> [port] [interval_ms]
+// Usage: node probe.js <host> [port] [interval_ms] [--tag=<name>]
+//   --tag does nothing except appear in this process's command line, so a
+//   driver probing several nodes at once can stop one of them with
+//   `pkill -f 'probe[.]js.*--tag=edge1'`.
+//
 // Output: one CSV line per sample on stdout
 //   epoch_ms,kind,rtt_ms          rtt_ms is -1 when the probe failed
 const net = require('net')
 const mc = require('minecraft-protocol')
 
-const HOST = process.argv[2] || '127.0.0.1'
-const PORT = parseInt(process.argv[3]) || 25565
-const EVERY = parseInt(process.argv[4]) || 1000
+const argv = process.argv.slice(2).filter(a => !a.startsWith('--tag='))
+const HOST = argv[0] || '127.0.0.1'
+const PORT = parseInt(argv[1]) || 25565
+const EVERY = parseInt(argv[2]) || 1000
 
 function emit(kind, ms) {
   console.log(`${Date.now()},${kind},${ms}`)
