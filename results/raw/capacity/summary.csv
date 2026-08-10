@@ -1,0 +1,5 @@
+node,cpu_max,cores,n_max,mspt_at_n_max,first_breach_n,mspt_at_breach
+edge1,"50000 100000",0.50,50,44.5,60,69.05
+edge2,"100000 100000",1.00,100,44.65,none,
+edge3,"200000 100000",2.00,100,11.05,none,
+cloud,"400000 100000",4.00,100,9.25,none,
