@@ -8,27 +8,53 @@ What the testbed is, why it looks like this, and what every line of
 ## 2.1 The shape
 
 ```
-                          netem 2.5 ms each way          cpu.max = 0.5 core
-   ┌────────┐  eth1   ┌───────────────────────┐  eth1   ┌──────────────┐
-   │        ├─────────┤   10.0.1.0/30 link    ├─────────┤  edge  .1.2  │
-   │ client │         └───────────────────────┘         └──────────────┘
-   │        │
-   │  bots  │  eth2   ┌───────────────────────┐  eth1   ┌──────────────┐
-   │ probes ├─────────┤   10.0.2.0/30 link    ├─────────┤ cloud  .2.2  │
-   └────────┘         └───────────────────────┘         └──────────────┘
-                          netem 20 ms each way            cpu.max = 4 cores
+   ┌────────┐  eth1   10.0.1.0/30   ┌───────────────┐
+   │        ├────────────────────── │ edge1  .1.2   │  0.5 core   cores 0-1
+   │        │  eth2   10.0.2.0/30   ├───────────────┤
+   │ client ├────────────────────── │ edge2  .2.2   │  1 core     cores 2-3
+   │  bots  │  eth3   10.0.3.0/30   ├───────────────┤
+   │ probes ├────────────────────── │ edge3  .3.2   │  2 cores    cores 4-6
+   │        │  eth4   10.0.4.0/30   ├───────────────┤
+   └────────┘────────────────────── │ cloud  .4.2   │  4 cores    cores 7-11
+                                    └───────────────┘
 ```
 
-Three nodes, two point-to-point links, and that is the whole experiment.
+Five nodes, four point-to-point links. Four candidates means the question is a
+**ranking**, not an A/B — which is what a placement algorithm actually has to
+produce.
 
-| Node | Role | CPU | Network distance |
+| Node | Role | CPU | Distance (`ladder`) |
 |---|---|---|---|
-| `client` | runs the bots and the probes | uncapped, pinned to cores 8-23 | - |
-| `edge` | the near, small server | 0.5 core, cores 0-1 | 5 ms RTT |
-| `cloud` | the far, large server | 4 cores, cores 2-7 | 40 ms RTT |
+| `client` | runs the bots and the probes | uncapped, cores 12-27 | - |
+| `edge1` | nearest and weakest | 0.5 core, cores 0-1 | 5 ms RTT |
+| `edge2` | mid-sized edge site | 1 core, cores 2-3 | 15 ms RTT |
+| `edge3` | large edge site | 2 cores, cores 4-6 | 30 ms RTT |
+| `cloud` | furthest and strongest | 4 cores, cores 7-11 | 40 ms RTT |
 
-**Pointing the bots at `10.0.1.2` instead of `10.0.2.2` *is* the placement
-decision.** Everything downstream is measuring the consequence of that choice.
+**Which IP the bots dial *is* the placement decision.** Everything downstream
+measures the consequence of that choice.
+
+### Capacity is structural, distance is a runtime knob
+
+The two properties are varied in deliberately different places.
+
+**Capacity** needs a redeploy, so the 0.5 / 1 / 2 / 4 ladder lives in the
+topology file. It exists so the capacity ratio can be shown to *move* the
+crossover, rather than the experiment resting on one convenient gap chosen in
+advance.
+
+**Distance** is applied after boot by `netem.sh`, so it costs seconds to
+change. That makes it a profile:
+
+| profile | edge1 | edge2 | edge3 | cloud | what it is for |
+|---|---|---|---|---|---|
+| `ladder` (default) | 5 ms | 15 ms | 30 ms | 40 ms | the realistic tradeoff: the closer a node is, the weaker it is |
+| `flat` | 5 ms | 5 ms | 5 ms | 40 ms | every edge equidistant, so any difference between them is capacity alone |
+| `near` | 2 ms | 2 ms | 2 ms | 5 ms | distance almost removed; isolates server effects |
+
+Being able to switch without redeploying is what makes it possible to separate
+"the near node lost because it is weak" from "the near node lost because of
+distance".
 
 ---
 
@@ -39,21 +65,25 @@ values discovered from results. Stating that plainly matters, because "edge is
 small and near, cloud is big and far" is precisely the premise the experiment
 is built to test - so it has to be declared as a premise.
 
-- **edge = 0.5 core.** An edge site is a cheap box in a cabinet with a power
-  and cooling budget. Small is the defining property of an edge node; if it
-  were large there would be no placement problem.
+- **A ladder rather than two extremes.** An edge site is a cheap box in a
+  cabinet with a power and cooling budget; small is the defining property. But
+  "edge" is not one size, and having 0.5 / 1 / 2 / 4 cores lets the crossover be
+  traced as a function of capacity instead of asserted at a single point.
 - **cloud = 4 cores.** A regional datacentre has compute to spare. What it does
   not have is proximity.
-- **5 ms vs 40 ms RTT.** Roughly a metro-area hop versus a cross-country one.
-  The 35 ms gap is the *entire budget the analytical model thinks it is
-  saving* by choosing edge. The interesting question is at what player count
-  the edge's queueing delay eats more than 35 ms - at that point the model's
-  ranking is inverted and it is picking the wrong node.
-- **Load grid stops at 40 bots** because `bot0`..`bot39` are the usernames
-  opped in the prepared server data. More bots means opping more usernames.
+- **5 / 15 / 30 / 40 ms RTT.** The gap between a node and the cloud is the
+  *budget the analytical model thinks it is saving* by choosing that node. For
+  `edge1` that is 35 ms. The interesting question is at what player count the
+  node's queueing delay eats more than its own head start - past that point the
+  model's ranking is inverted.
+- **Load stops at 100 players**, set by `max-players=100` and by `bot0`..`bot99`
+  being the opped usernames. Un-opped bots are removed by the chat spam filter.
+  This ceiling is why `edge3` and `cloud` never saturate; see
+  [07-capacity.md](07-capacity.md).
 
-The two servers are otherwise identical: same jar, same world, same config,
-copied from the same source. CPU and network delay are the only differences.
+The four servers are otherwise identical: same jar, same world, same config,
+copied from the same source by `prepare.sh`. CPU and network delay are the only
+differences between them.
 
 ---
 
@@ -65,8 +95,14 @@ copied from the same source. CPU and network delay are the only differences.
 name: edgegame
 ```
 The lab name. containerlab prefixes every container with it, so the nodes
-become `clab-edgegame-client`, `clab-edgegame-edge`, `clab-edgegame-cloud`.
-Every script refers to nodes by those full names.
+become `clab-edgegame-client`, `clab-edgegame-edge1` and so on. Every script
+refers to nodes by those full names, built by the `ctr()` helper in
+`topology/nodes.env`.
+
+`nodes.env` is the single source of truth for the node list, their data-plane
+addresses and the `cpu.max` each one is expected to have. Every script sources
+it, so adding or resizing a node means editing that table and the topology -
+nothing else.
 
 ```yaml
 topology:
@@ -80,12 +116,13 @@ router". `image` is built by `up.sh` from `Dockerfile.client` - the stock Node
 image has no `ip` and no `ping`, and we need both.
 
 ```yaml
-      cpu-set: "8-23"
+      cpu-set: "12-27"
 ```
-Pins the load generator to host cores 8-23. The servers are pinned to 0-1 and
-2-7. Disjoint sets, so the instrument cannot compete for CPU with the thing it
-measures. This does not remove the shared-host caveat entirely (memory
-bandwidth and caches are still shared) but it removes the largest part of it.
+Pins the load generator to host cores 12-27. The servers take 0-1, 2-3, 4-6 and
+7-11. Every range is disjoint, so no node can compete for CPU with another, and
+the instrument cannot compete with the thing it measures. `verify.sh` checks
+this rather than trusting it. It does not remove the shared-host caveat (memory
+bandwidth and caches are still shared) but it removes the largest part.
 
 ```yaml
       cmd: sleep infinity
@@ -115,7 +152,7 @@ own subnet, so the client's routing table sends `10.0.1.2` out `eth1` and
 `10.0.2.2` out `eth2` with no routing configuration at all.
 
 ```yaml
-    edge:
+    edge1:
       image: itzg/minecraft-server
       cpu: 0.5
       cpu-set: "0-1"
@@ -146,10 +183,17 @@ it** - see §2.6.
 
 ```yaml
   links:
-    - endpoints: ["client:eth1", "edge:eth1"]
-    - endpoints: ["client:eth2", "cloud:eth1"]
+    - endpoints: ["client:eth1", "edge1:eth1"]
+    - endpoints: ["client:eth2", "edge2:eth1"]
+    - endpoints: ["client:eth3", "edge3:eth1"]
+    - endpoints: ["client:eth4", "cloud:eth1"]
 ```
-Two veth pairs. This is the cabling.
+Four veth pairs. This is the cabling.
+
+**Never `docker restart` a containerlab node.** The veths live in the
+container's network namespace; restarting recreates that namespace and the data
+plane disappears - `eth1` and up are simply gone, and `verify.sh` will report
+every address and qdisc missing. Redeploy with `./up.sh` instead.
 
 ---
 
@@ -157,12 +201,12 @@ Two veth pairs. This is the cabling.
 
 ```bash
 cd topology
-./prepare.sh     # build the two server data directories (only needed once)
-./up.sh          # build image, deploy, wait for both servers, apply netem, verify
+./prepare.sh       # build the four server data directories (only needed once)
+./up.sh ladder     # build image, deploy, wait for all four, apply netem, verify
 ```
 
-`./up.sh` accepts the two RTT targets: `./up.sh 5 40` is the default,
-`./up.sh 10 60` would make the paths further apart.
+`./up.sh` takes a netem profile: `ladder` (default), `flat` or `near`. Switching
+profile later needs no redeploy - just `./netem.sh flat`.
 
 Tear down with `./down.sh`, or `./down.sh --clean` to also delete the ~500 MB
 of server data.
