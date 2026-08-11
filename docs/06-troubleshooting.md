@@ -71,6 +71,52 @@ bot.on('spawn', () => {
 
 ---
 
+## 6.2b A cold world makes a healthy node look saturated
+
+**Symptom.** The first cell run against a freshly-deployed node shows a
+saturated server - CPU pinned at the cap, MSPT over the 50 ms budget, tail
+latency in the hundreds of ms. Re-running the *same cell* a few minutes later
+shows a comfortable server.
+
+Same node, same 5 bots, same 60 s window, on a 0.5-core node:
+
+| | p50 | p95 | p99 | cpu% | mspt |
+|---|---|---|---|---|---|
+| cold world | 43 | 474 | 819 | 50 (capped) | 66.0 |
+| warm world | 7 | 60 | 73 | 21 | 5.1 |
+
+**Cause.** Each node boots from a copy of the same server directory. The world
+in it is generated only where a previous session actually went. The first time
+bots walk outward from spawn, the server has to **generate** new terrain, and
+world generation is far more expensive than simulating an already-generated
+chunk.
+
+**Why this is dangerous rather than merely annoying.** It does not just add
+noise - it adds *correlated* noise:
+
+- It hits the **weakest node hardest**, which is exactly the node the
+  experiment's conclusion rests on.
+- In a grid that ramps `1, 5, 10, 20, 30, 40`, each cell pushes bots into
+  terrain the previous cells never reached. So chunk generation **rises
+  together with player count**, and the two are confounded. A curve that looks
+  like "queueing delay vs load" is partly "world generation vs load".
+
+**Fix.** Warm every node before collecting, and discard that data:
+
+```bash
+cd controller && ./warmup.sh 20 150
+```
+
+`warmup.sh` runs bots on all nodes simultaneously (their cpu-sets are disjoint,
+so they do not compete), then `save-all`s the generated chunks to disk. After
+it, cells can be run in any order and in isolation.
+
+**How to detect it after the fact.** Compare the first cell of a run against a
+repeat of that same cell later in the run. If the repeat is dramatically
+healthier, the first one was measuring terrain generation.
+
+---
+
 ## 6.3 Kicked bots: `multiplayer.disconnect.duplicate_login`
 
 **Symptom.** Bots disconnect mid-run. Easy to misread as an overload symptom.

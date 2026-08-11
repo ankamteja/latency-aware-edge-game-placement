@@ -1,5 +1,24 @@
 # Load sweep: RTT vs bot count at zero network distance
 
+> **Correction (2026-08-11): these numbers are confounded and should not be
+> quoted.** Every run below started from a freshly copied world, and the grid
+> ramped 1 → 5 → 10 → 20 → 30 → 40 with bots walking outward from spawn. Each
+> cell therefore pushed into terrain the previous cells had never reached, so
+> the server was **generating** new chunks as well as simulating players -
+> and the amount of generation rose *together with* the player count. Load and
+> world generation are not separable in this data.
+>
+> Measured afterwards on the same node spec, warm vs cold, same 5 bots and same
+> window: p95 **60 ms warm** against **474 ms cold**; CPU 21% against a pinned
+> 50%. On a warm world the 0.5-core node holds **50 players** before its tick
+> time breaks the 50 ms budget - it was nowhere near saturated at 40.
+>
+> The direction of the effect still holds, and the mechanism (CPU cap → long
+> ticks → queueing) is unchanged. The magnitudes do not. See
+> [docs/06-troubleshooting.md §6.2b](../docs/06-troubleshooting.md) for the
+> artefact, `controller/warmup.sh` for the fix, and
+> `results/raw/capacity/` for the warm capacity measurements that replace this.
+
 Follow-up to [derisk.md](derisk.md). Same idea, more points: one server on
 localhost, network distance fixed at zero, only the bot count changes. The
 analytical model (`latency = propagation + size/bandwidth`) predicts an
