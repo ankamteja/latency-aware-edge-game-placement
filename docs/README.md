@@ -16,6 +16,10 @@ first matters, and every command is spelled out flag by flag.
 | 6 | [06-troubleshooting.md](06-troubleshooting.md) | Every failure hit so far and the fix. Read this when something breaks. |
 | 7 | [07-capacity.md](07-capacity.md) | How each node's capacity is measured, why utilization is the portable unit, and the numbers it produced. |
 
+[diagrams/](diagrams/) holds two generated figures — the testbed architecture
+with the probe ladder, and a map of every source file. Both are produced by a
+script so they can be regenerated instead of going stale.
+
 [HANDOFF.md](HANDOFF.md) is the one-file summary of the whole project — what
 exists, what it showed, what will bite you, and the standing constraints.
 Start there if you are picking this up cold.
@@ -65,4 +69,5 @@ controller/    warmup.sh   generate terrain before measuring (required)
 results/       derisk.md sweep.md   write-ups of the single-node experiments
                raw/                 raw measurement streams, one dir per run
 docs/          this documentation
+               diagrams/            generated figures + the scripts that draw them
 ```
