@@ -1,0 +1,6 @@
+[
+  {"name": "edge1", "cores": 0.5, "rtt_ms": 5.155},
+  {"name": "edge2", "cores": 1.0, "rtt_ms": 15.235},
+  {"name": "edge3", "cores": 2.0, "rtt_ms": 30.251},
+  {"name": "cloud", "cores": 4.0, "rtt_ms": 40.220}
+]
