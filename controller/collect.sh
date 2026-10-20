@@ -25,6 +25,10 @@
 #   --idle      seconds of probe-only baseline       (default 20)
 #   --settle    seconds of recovery between cells    (default 30)
 #   --tag       name for the output directory        (default: UTC timestamp)
+#               reusing a tag adds cells to that run, so different nodes
+#               can be swept with different load ladders under one tag
+#   --min-avail MB of host memory that must be available before a cell
+#               starts                                 (default 1500)
 #   --no-verify skip the pre-flight (only for a driver that already ran it)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -37,6 +41,7 @@ DURATION=120
 IDLE=20
 SETTLE=30
 VERIFY=1
+MIN_AVAIL=1500
 TAG="$(date -u +%Y%m%dT%H%M%SZ)"
 
 while [ $# -gt 0 ]; do
@@ -47,6 +52,7 @@ while [ $# -gt 0 ]; do
     --idle)      IDLE="$2";    shift 2;;
     --settle)    SETTLE="$2";  shift 2;;
     --tag)       TAG="$2";     shift 2;;
+    --min-avail) MIN_AVAIL="$2";shift 2;;
     --no-verify) VERIFY=0;     shift 1;;
     *) echo "unknown option: $1" >&2; exit 2;;
   esac
@@ -65,57 +71,9 @@ if [ "$VERIFY" = 1 ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# helpers
+# helpers - shared with deploy.sh
 # ---------------------------------------------------------------------------
-
-# Ask the server itself how many players it has. rcon is an admin console over
-# TCP; `list` answers "There are 3 of a max of 100 players online: ...".
-online() {
-  docker exec "$(ctr "$1")" rcon-cli list 2>/dev/null \
-    | tr -d '\r' | grep -oE 'are [0-9]+' | grep -oE '[0-9]+' | head -1
-}
-
-# Nothing from the previous cell may still be attached, or the load in this
-# cell is not N. Reused usernames also collide as "duplicate_login" kicks.
-wait_empty() {
-  for _ in $(seq 1 45); do
-    [ "$(online "$1" || echo x)" = "0" ] && return 0
-    sleep 2
-  done
-  echo "  WARNING: $1 still reports $(online "$1") players after 90s"
-}
-
-# Stop the load and probes for ONE target.
-# The bracket in bot[.]js stops the pattern matching the pkill command line
-# itself - without it pkill happily kills its own shell. The --tag marker is
-# what makes this per-target instead of "kill every bot on the client", which
-# matters as soon as two nodes are loaded at the same time.
-stop_target() {  # node ip
-  docker exec "$CLIENT_CTR" pkill -f "bot[.]js.*--tag=$1"   2>/dev/null || true
-  docker exec "$CLIENT_CTR" pkill -f "probe[.]js.*--tag=$1" 2>/dev/null || true
-  docker exec "$CLIENT_CTR" pkill -f "[p]ing .*$2"          2>/dev/null || true
-}
-
-# Server-side load counters, sampled on the host. Written as one CSV row per
-# sample. mspt/tps come back with Minecraft colour codes (section sign plus a
-# character); strip them or the CSV is unreadable.
-strip() { sed -e 's/\xc2\xa7.//g' -e 's/\x1b\[[0-9;]*m//g' | tr -d '\r' | tr ',' ';' | tr -d '\n'; }
-
-sample_server() {  # node outfile
-  local node="$1" out="$2" c
-  echo "epoch_ms,players,cpu_percent,mem_usage,mspt_raw,tps_raw" > "$out"
-  while :; do
-    c=$(docker stats --no-stream --format '{{.CPUPerc}},{{.MemUsage}}' "$(ctr "$node")" 2>/dev/null | tr -d '%' | tr -d '\r')
-    printf '%s,%s,%s,"%s","%s"\n' \
-      "$(date +%s%3N)" \
-      "$(online "$node" || echo -1)" \
-      "${c:-,}" \
-      "$(docker exec "$(ctr "$node")" rcon-cli mspt 2>/dev/null | strip)" \
-      "$(docker exec "$(ctr "$node")" rcon-cli tps  2>/dev/null | strip)" \
-      >> "$out"
-    sleep 5
-  done
-}
+source ./lib.sh
 
 # ---------------------------------------------------------------------------
 # the grid
@@ -137,6 +95,7 @@ for target in ${TARGETS//,/ }; do
 
     stop_target "$target" "$IP"
     wait_empty "$target"
+    wait_mem
     # Let the server settle before the idle baseline starts. After a heavy cell
     # the game thread is still catching up, and a baseline measured during that
     # recovery is not a baseline.
@@ -169,6 +128,8 @@ for target in ${TARGETS//,/ }; do
     sleep "$DURATION"
     STEADY_END=$(date +%s%3N)
     HELD=$(online "$target" || echo -1)
+    MEM_AVAIL_END=$(mem_avail_mb)
+    SWAP_END=$(swap_mb "$target")
 
     kill "$SAMPLER" 2>/dev/null || true
     stop_target "$target" "$IP"
@@ -187,6 +148,8 @@ for target in ${TARGETS//,/ }; do
   "steady_end_ms": $STEADY_END,
   "cpu_max": "$(docker exec "$(ctr "$target")" cat /sys/fs/cgroup/cpu.max | tr -d '\r')",
   "cpuset": "$(docker inspect -f '{{.HostConfig.CpusetCpus}}' "$(ctr "$target")")",
+  "host_mem_available_mb_end": $MEM_AVAIL_END,
+  "server_swap_mb_end": $SWAP_END,
   "netem_delay": "$(docker exec "$(ctr "$target")" tc qdisc show dev eth1 2>/dev/null | grep -o 'delay [^ ]*' | head -1)"
 }
 EOF
@@ -195,9 +158,11 @@ EOF
   done
 done
 
-# The client wrote into the bind mount; move the whole tree to its final home.
-mkdir -p "$REPO/results/raw"
-cp -a "$REPO/topology/out/$TAG" "$OUTDIR"
+# The client wrote into the bind mount; copy the cells to their final home.
+# Copy the CONTENTS: with a plain `cp -a src dst`, a second run under the same
+# tag would land in dst/<tag>/ instead of next to the first run's cells.
+mkdir -p "$OUTDIR"
+cp -a "$REPO/topology/out/$TAG/." "$OUTDIR/"
 echo
 echo "raw streams written to $OUTDIR"
 find "$OUTDIR" -type f | sort | sed 's|^|  |'
