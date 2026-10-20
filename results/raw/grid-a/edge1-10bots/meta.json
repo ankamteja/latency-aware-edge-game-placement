@@ -1,0 +1,17 @@
+{
+  "tag": "grid-a",
+  "target": "edge1",
+  "target_ip": "10.0.1.2",
+  "bots": 10,
+  "players_held": 10,
+  "idle_seconds": 15,
+  "duration_seconds": 90,
+  "bots_start_ms": 1792504977340,
+  "steady_start_ms": 1792504992399,
+  "steady_end_ms": 1792505082452,
+  "cpu_max": "50000 100000",
+  "cpuset": "0-1",
+  "host_mem_available_mb_end": 2643,
+  "server_swap_mb_end": 0,
+  "netem_delay": "delay 2.5ms"
+}

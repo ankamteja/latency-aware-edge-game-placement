@@ -1,0 +1,17 @@
+{
+  "tag": "shardtest",
+  "target": "cloud",
+  "target_ip": "10.0.4.2",
+  "bots": 80,
+  "players_held": 80,
+  "idle_seconds": 10,
+  "duration_seconds": 60,
+  "bots_start_ms": 1792509495219,
+  "steady_start_ms": 1792509545275,
+  "steady_end_ms": 1792509605315,
+  "cpu_max": "400000 100000",
+  "cpuset": "7-11",
+  "host_mem_available_mb_end": 1521,
+  "server_swap_mb_end": 0,
+  "netem_delay": "delay 20ms"
+}
