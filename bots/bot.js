@@ -10,7 +10,8 @@
 //      inside the server, which is exactly the term the analytical placement
 //      model cannot see.
 //
-// Usage: node bot.js [N] [host] [port] [--tag=<name>]
+// Usage: node bot.js [N] [host] [port] [--tag=<name>] [--from=K]
+//                    [--offset=<ms>] [--every=<ms>]
 //   N     number of bots (default 1; usernames bot0..bot(N-1) must be opped
 //         server-side or the vanilla chat spam filter kicks them)
 //   host  server to dial - THIS is the placement decision (default localhost)
@@ -19,6 +20,16 @@
 //         line, so a driver loading several nodes at once can stop the bots
 //         for ONE target with `pkill -f 'bot[.]js.*--tag=edge1'` instead of
 //         killing every bot on the client
+//   --from    first bot number (default 0): this process runs botK..bot(K+N-1)
+//   --offset  ms before this process's first join (default 0)
+//   --every   ms between this process's joins (default 500)
+//
+// One process should not run many bots. Every chat message is broadcast to
+// every player, so N bots receive N^2 messages a second, and a single Node
+// process handles all of them on one thread: at 60 bots it sat at 70-100% of
+// a core and its event-loop delay was being measured as server latency.
+// bots/spawn.sh splits a load across processes with these three flags so the
+// joins still arrive one every 500 ms overall.
 //
 // Output: one CSV line per event on stdout
 //   epoch_ms,bot<i>,rtt,<ms>      a latency sample
@@ -27,13 +38,22 @@
 //                                 forever, so it eventually falls or drowns
 //   epoch_ms,bot<i>,kicked,<why>  server removed the bot - a run with kicks is
 //   epoch_ms,bot<i>,error,<why>   not clean and should be discarded
+//   epoch_ms,proc<K>,loop,<p99>   this process's event-loop delay p99 over the
+//                                 last 5 s, in ms - if it is not small, the
+//                                 client, not the server, is adding latency
 //
 // (Logs under results/raw/ from before 2026-08-03 use the older
 //  "<i> RTT: <ms>" format instead.)
 const mineflayer = require('mineflayer')
 
-// --tag is only a process-line marker; drop it before reading positionals.
-const argv = process.argv.slice(2).filter(a => !a.startsWith('--tag='))
+// Options are --name=value; everything else is positional. --tag is only a
+// process-line marker and is not read.
+const opt = Object.fromEntries(process.argv.slice(2)
+  .filter(a => a.startsWith('--')).map(a => a.slice(2).split('=')))
+const argv = process.argv.slice(2).filter(a => !a.startsWith('--'))
+const FROM = parseInt(opt.from) || 0
+const OFFSET = parseInt(opt.offset) || 0
+const EVERY = parseInt(opt.every) || 500
 const N = parseInt(argv[0]) || 1
 const HOST = argv[1] || 'localhost'
 const PORT = parseInt(argv[2]) || 25565
@@ -112,4 +132,12 @@ function makeBot(i) {
 }
 // Stagger the joins: N clients logging in at the same instant is a chunk-load
 // spike, not the steady-state load we want to measure.
-for (let i = 0; i < N; i++) setTimeout(() => makeBot(i), i * 500)
+for (let j = 0; j < N; j++) setTimeout(() => makeBot(FROM + j), OFFSET + j * EVERY)
+
+const { monitorEventLoopDelay } = require('perf_hooks')
+const loop = monitorEventLoopDelay({ resolution: 10 })
+loop.enable()
+setInterval(() => {
+  console.log([Date.now(), 'proc' + FROM, 'loop', (loop.percentile(99) / 1e6).toFixed(1)].join(','))
+  loop.reset()
+}, 5000)

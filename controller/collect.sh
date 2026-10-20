@@ -117,7 +117,7 @@ for target in ${TARGETS//,/ }; do
 
     BOTS_START=$(date +%s%3N)
     docker exec -d "$CLIENT_CTR" sh -c \
-      "node /bots/bot.js $N $IP 25565 --tag=$target > $CONTAINER_OUT/$CELL/bot.csv 2>&1"
+      "/bots/spawn.sh $N $IP 25565 $target > $CONTAINER_OUT/$CELL/bot.csv 2>&1"
 
     # Bots join staggered at 500 ms each, so the load is not steady until they
     # are all in. Wait that out, then hold for the full duration.

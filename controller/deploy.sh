@@ -94,7 +94,7 @@ sleep "$IDLE"
 BOTS_START=$(date +%s%3N)
 for n in $LOADED; do
   docker exec -d "$CLIENT_CTR" sh -c \
-    "node /bots/bot.js ${COUNT[$n]} $(node_ip "$n") 25565 --tag=$n > $CONTAINER_DIR/$n/bot.csv 2>&1"
+    "/bots/spawn.sh ${COUNT[$n]} $(node_ip "$n") 25565 $n > $CONTAINER_DIR/$n/bot.csv 2>&1"
 done
 sleep $(( MAXN / 2 + 10 ))
 STEADY_START=$(date +%s%3N)

@@ -102,7 +102,7 @@ for node in ${TARGETS//,/ }; do
     sleep "$SETTLE"
 
     docker exec -d "$CLIENT_CTR" sh -c \
-      "node /bots/bot.js $N $ip 25565 --tag=$node > /dev/null 2>&1"
+      "/bots/spawn.sh $N $ip 25565 $node > /dev/null 2>&1"
     sleep "$(( N / 2 + 10 ))"
 
     ms=(); cp=()

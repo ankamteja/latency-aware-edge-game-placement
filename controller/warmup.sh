@@ -50,7 +50,7 @@ for node in $NODES; do
   ip="$(node_ip "$node")"
   docker exec "$CLIENT_CTR" pkill -f "bot[.]js.*--tag=$node" 2>/dev/null || true
   docker exec -d "$CLIENT_CTR" sh -c \
-    "node /bots/bot.js $BOTS $ip 25565 --tag=$node > /dev/null 2>&1"
+    "/bots/spawn.sh $BOTS $ip 25565 $node > /dev/null 2>&1"
 done
 
 sleep "$((BOTS / 2 + 10))"
