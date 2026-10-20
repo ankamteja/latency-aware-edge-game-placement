@@ -92,10 +92,15 @@ part predicts nothing about the cliff.
 ```
 bots/         bot.js load generator, probe.js latency probes
 topology/     containerlab edge-cloud testbed + bring-up/verify scripts
-controller/   collect.sh — the metric collection driver
-results/      experiment notes and raw measurement streams
+controller/   collect.sh (grid cells), deploy.sh (one placement, all nodes at once),
+              grid.sh, deploy_plan.sh, warmup.sh, capacity.sh
+dataset/      build_dataset.py — joins the raw streams into labelled rows
+placement/    latency models, placement algorithms, the deploy-and-score experiment
+model/        evaluate.py (prediction + ranking tests), figures.py
+data/         the measured dataset: dataset.csv (30 s windows), cells.csv
+results/      raw measurement streams, model evaluation, deployment scores
+figures/      generated figures for the write-up
 docs/         full documentation, written for a beginner
-data/         measured dataset                   (planned)
 ```
 
 ## The testbed
@@ -137,9 +142,46 @@ from `/sys/fs/cgroup/cpu.max`, netem qdiscs present, and the RTT actually
 measured with `ping`. Full procedure in [docs/05-runbook.md](docs/05-runbook.md);
 every command explained in [docs/03-commands.md](docs/03-commands.md).
 
-## Results so far
+## Results
 
-### Measured node capacity (warm worlds, 2026-08-11)
+Full analysis, numbers and limits: [docs/08-results.md](docs/08-results.md).
+Four nodes (0.5 / 1 / 2 / 4 cores at 5 / 15 / 30 / 40 ms), two replicates of
+the load grid, then each latency model's optimal placement deployed for real.
+
+**The load-blind placement fails, by orders of magnitude.** Each model chose
+how to split a batch of players across the four nodes; every choice was then
+deployed and measured with all nodes loaded at once. Worst node's p95 in-game
+RTT, ms:
+
+| players | analytical (load-blind) | queueing (M/M/1) | learned (trees) |
+|---|---|---|---|
+| 40 | 26 | 26 | 26 |
+| 80 | **29 897** | 20 | 20 |
+| 120 | **17 758** | 31 | 32 |
+| 160 | **19 990** | 35 | 39 |
+
+The analytical model predicted 5-15 ms for every one of those and put everyone
+on the nearest node. Both load-aware models keep edge1 at 40 players and spread
+the rest; their placements measure within a few ms of each other.
+
+**The network is flat; the game thread is not.** ICMP never moved more than
+0.3 ms from its configured value in any cell. edge1's p95 stays within 10 ms of
+its 5 ms RTT up to 40 players and is 6.7-8.6 s at 60; edge2 breaks between 80
+and 100. The tail leaves the flat region while mean tick time is still an
+eighth of its budget.
+
+**The learned model is the better predictor** (cross-replicate median error
+0.9 ms vs 1.8 ms queueing and 5.8 ms analytical), but on these four scenarios
+it does not *place* better than a correctly fitted closed form. One host, two
+replicates, capacities chosen rather than discovered - see
+[§8.6](docs/08-results.md#86-limits---quote-these-with-the-results).
+
+![measured p95 per node vs the load-blind model](figures/fig1_p95_vs_players.png)
+![each model's placement, deployed and measured](figures/fig5_deployments.png)
+
+## Earlier results (superseded or background)
+
+### Measured node capacity (warm worlds, 2026-08-11; day/night cycle was running)
 
 Players a node holds before its tick time breaks the 50 ms budget that the
 game's 20 Hz design imposes. This is the denominator that turns a raw player
@@ -233,10 +275,14 @@ the artefact and its fix in
 - [x] Automated sweep across bot counts and placement targets
 - [x] Four-candidate testbed with a capacity ladder (0.5 / 1 / 2 / 4 cores)
 - [x] Per-node capacity measured, so load can be expressed as utilization
-- [ ] Warm re-run of the placement grid — where does edge stop winning?
-- [ ] Labelled dataset
-- [ ] Train a latency predictor on measured data and compare against the
-      analytical model's node ranking
+- [x] Warm re-run of the placement grid, two replicates, time of day frozen
+- [x] Labelled dataset (`data/dataset.csv`, `data/cells.csv`)
+- [x] Latency predictor trained on measured data, compared against the
+      analytical and M/M/1 models on prediction and on node ranking
+- [x] Each model's placement deployed for real and measured
+- [ ] More replicates and a dedicated host, to put intervals on the knees
+- [ ] Larger placement problems (more nodes, more matches) where the
+      load-aware models could disagree
 
 ## Reading the results
 

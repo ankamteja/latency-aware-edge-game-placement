@@ -1,7 +1,17 @@
 # Handoff
 
-State of the project as of **2026-08-03**, HEAD `dd1cdca`. Written so a fresh
-session can pick this up without re-deriving anything.
+State of the project as of **2026-10-21**. Written so a fresh session can pick
+this up without re-deriving anything.
+
+**Current state in one paragraph.** The four-node testbed (edge1/edge2/edge3/
+cloud: 0.5/1/2/4 cores at 5/15/30/40 ms) is built and verified. Two replicates
+of the load grid (`grid1`, `grid2`), the labelled dataset (`data/`), three
+latency models (analytical, M/M/1, gradient-boosted trees), and each model's
+optimal placement deployed for real (`place1`) are done. Headline: the
+load-blind placement's worst players wait 18-30 s from 80 players on; both
+load-aware placements stay at 20-39 ms. The analysis and its limits are in
+[08-results.md](08-results.md) - read that, not §3 below, for numbers.
+§2-§3 below describe the earlier two-node phase and are kept as history.
 
 Read [README.md](README.md) for the doc index. This file is the summary of
 *what exists*, *what it showed*, and *what will bite you*.
@@ -232,8 +242,12 @@ produce *plausible but worthless* data:
 | netem only delays **egress** | a one-sided rule gives half the RTT you configured | half the target on each end, then verify with `ping` |
 | Bots dialling the management IP (`172.20.20.x`) | the emulated links are never touched; near and far measure identically | data-plane IPs only: `10.0.1.2` / `10.0.2.2` |
 | **mineflayer re-emits `spawn` on every respawn** | listeners and intervals registered per spawn stack up; one bot sent 3 msg/s and counted each 3x - 530 samples in 130 s instead of 130 | register once (`bot.js` guards with a `spawns` counter); sanity-check `grep -c ',rtt,'` against `N x duration` |
+| **Day/night cycle** spawns hostile mobs at night; four servers, four independent clocks | one bot at night put edge1 14 s behind; a cell lands at night by chance and looks like saturation | `topology/world_rules.sh` (peaceful, noon, no weather); `verify.sh` checks it (§6.18) |
+| **Host processes on the servers' cores** - cpusets keep containers apart, not the host's browser | edge1 cost 2.4x the CPU per player while the laptop was in use; knee moved from 50-60 to 20-30 players | keep the host idle during grids; compare a 1-player cell's CPU against earlier runs (§8.6) |
+| **Reboot drops containerlab's veths** while Docker restarts the containers | every container reports healthy, no data-plane interface, no netem | `topology/up.sh` again, then `verify.sh` (§6.17) |
+| **One Node process for all bots** - chat is broadcast, N bots receive N^2 msgs/s | the client's event loop delay is recorded as server latency | `bots/spawn.sh`, 10 bots per process; watch the `loop` lines (§6.16) |
 
-That last one was live in the original `bot.js`, so **the July single-node
+The `spawn` re-emit trap was live in the original `bot.js`, so **the July single-node
 sweep numbers carry it**. Flagged, not silently patched.
 
 ---
@@ -244,12 +258,10 @@ sweep numbers carry it**. Flagged, not silently patched.
   `Claude-Session:` trailer. Author stays `charan
   <ankamcharantejaa@gmail.com>`. History was rewritten once to strip these;
   don't reintroduce them.
-- **Do not build a dataset or train a model yet.** Stated twice, explicitly.
-  Collection keeps everything and decides nothing; joining, feature selection
-  and labelling are the next phase, not this one.
-- **Do not write a `results/run1.md`.** The numbers are already framed
-  correctly in `docs/04-metrics.md §4.1` and the README as a sanity check that
-  the instrument works - not as the analysis.
+- **Discarded runs stay in the repo as evidence, never in the dataset.**
+  `grid-a`, `grid1-daynight`, `grid2-daynight`, `grid1-edge1-contended` and
+  `run1` each document an artefact; `build_dataset.py` is only ever run on
+  `grid1,grid2,place1`.
 - **Docs are for a beginner.** Every concept explained where it first matters,
   every command flag by flag. Keep that register.
 - **Claims are stated with their limits.** "Capacities were chosen, not
@@ -300,17 +312,16 @@ Full procedure: [05-runbook.md](05-runbook.md).
 
 ## 8. Next steps, roughly in order
 
-1. **Analysis of `run1`** - locate the crossover precisely per percentile,
-   separate respawn bursts from steady-state queueing in the tail, relate MSPT
-   to in-game RTT.
-2. **Replication** - re-run the grid at least twice for a variance estimate.
-   The crossover cell is currently a single observation.
-3. **Sweep the design parameters** - capacity ratio (edge at 0.25 / 0.5 / 1
-   core) and distance gap, to show *how* the crossover moves rather than that
-   it exists at one point.
-4. **Richer impairment** - `containerlab tools netem set` also takes
-   `--jitter`, `--loss` and `--rate`. A bandwidth cap would finally make the
-   formula's `data_size / bandwidth` term non-trivial instead of negligible.
-5. **Then** the dataset, then the predictor, then substituting it into a
-   placement algorithm and comparing node rankings against the analytical
-   baseline. Not before.
+1. **More replicates, on an idle or dedicated host.** The knees (edge1 at
+   50-60, edge2 at 80-100) disagree by 6-80x between replicates; a few more
+   runs put an interval on where they sit.
+2. **Push edge3 and cloud past their knee.** Both stayed flat to the
+   100-player ceiling; the "100 players per core" capacity the M/M/1 model uses
+   is untested above 1 core. Needs `max-players` raised and more client memory.
+3. **Larger placement problems** - more nodes, more matches, uneven match
+   sizes - where the M/M/1 and learned models could disagree. On the four
+   scenarios run, they place almost identically.
+4. **Richer impairment** - jitter, loss, a bandwidth cap - so the formula's
+   `size/bandwidth` term is no longer negligible.
+5. **Mob AI back on, as a second load source** the model is told about,
+   instead of frozen out.

@@ -15,6 +15,7 @@ first matters, and every command is spelled out flag by flag.
 | 5 | [05-runbook.md](05-runbook.md) | The step-by-step procedure to run a collection from a cold machine. |
 | 6 | [06-troubleshooting.md](06-troubleshooting.md) | Every failure hit so far and the fix. Read this when something breaks. |
 | 7 | [07-capacity.md](07-capacity.md) | How each node's capacity is measured, why utilization is the portable unit, and the numbers it produced. |
+| 8 | [08-results.md](08-results.md) | The analysis: the load grid, rank inversion, how well each latency model predicts, and each model's placement deployed and measured. With its limits. |
 
 [diagrams/](diagrams/) holds two generated figures — the testbed architecture
 with the probe ladder, and a map of every source file. Both are produced by a
@@ -34,11 +35,12 @@ done      four-way latency measurement             bots/probe.js, bots/bot.js
 done      metric collection driver                 controller/collect.sh
 done      world warm-up, a required pre-step       controller/warmup.sh
 done      per-node capacity measured               results/raw/capacity/
-NOW       warm re-run of the placement grid
-next      analysis of the collected streams
-later     labelled dataset
-later     load-aware latency model
-later     substitute the model into a placement algorithm
+done      warm grid, two replicates, time frozen   results/raw/grid1/, grid2/
+done      labelled dataset                         data/
+done      latency models: analytical, M/M/1, trees placement/models.py, results/model/
+done      placements deployed and measured         results/raw/place1/, results/placement/
+done      analysis                                 08-results.md
+next      more replicates on a dedicated host; larger placement problems
 ```
 
 Two earlier results are marked SUPERSEDED because they were measured on freshly

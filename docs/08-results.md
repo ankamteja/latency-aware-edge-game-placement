@@ -1,0 +1,252 @@
+# 8. Results: the grid, the models, and the deployed placements
+
+This chapter is the analysis. Everything before it built the instrument; this
+is what the instrument measured, on the four-node testbed, with every known
+artefact removed. Every number below can be regenerated from the files under
+`results/` with the commands in §8.7.
+
+Read the limits in §8.6 before quoting anything.
+
+---
+
+## 8.1 What was run
+
+| run | what | cells | when |
+|---|---|---|---|
+| `grid1` | every node swept on its own load ladder, edge1 → cloud | 25 | 2026-10-20 23:43 – 2026-10-21 00:48, edge1 re-run 02:30 – 02:47 |
+| `grid2` | the same ladder, nodes in reverse order | 25 | 2026-10-21 00:48 – 01:54 |
+| `place1` | each model's optimal placement deployed for real, all nodes loaded at once | 14 placements, 31 node-cells | 2026-10-21 01:54 – 02:28, 02:47 – 02:53 |
+
+Ladders: edge1 at 1, 10, 20, 30, 40, 50, 60 players; edge2, edge3 and cloud at
+1, 20, 40, 60, 80, 100. Each cell: 20 s settle, 15 s idle baseline (probes
+only), staggered join, 90 s steady window. Only the steady window is analysed.
+
+Conditions, all checked by `topology/verify.sh` before each run:
+
+- netem RTT 5.1 / 15.1 / 30.1 / 40.1 ms (edge1 / edge2 / edge3 / cloud)
+- CPU quota 0.5 / 1 / 2 / 4 cores on disjoint cpusets
+- warm worlds, server heaps unable to swap
+- bots split 10 per process, so the client is not in the measurement (§6.16)
+- **time of day frozen at noon, peaceful, no weather** (§6.18)
+
+Discarded, and kept only as evidence of the artefact that spoiled them:
+
+| kept as | why it is not used |
+|---|---|
+| `grid1-daynight`, `grid2-daynight` | measured with the day/night cycle running: hostile mobs at night (§6.18) |
+| `grid1-edge1-contended` | edge1 measured while the host was in heavy interactive use: 2.4x the CPU per player of every other edge1 measurement (§8.6) |
+| `grid-a` | one bot process for all bots: the client's event loop was measured (§6.16) |
+
+The dataset (`data/dataset.csv`, `data/cells.csv`) is built from `grid1`,
+`grid2` and `place1` only: 81 cells, 243 rows of 30 s windows.
+
+---
+
+## 8.2 The network is flat; the game thread is not
+
+p95 in-game round-trip time, ms, both replicates (`grid1 / grid2`). The network
+round trip the analytical model predicts is in the header.
+
+| players | edge1 (5.1 ms) | edge2 (15.1 ms) | edge3 (30.1 ms) | cloud (40.1 ms) |
+|---|---|---|---|---|
+| 1 | 6 / 6 | 17 / 16 | 31 / 31 | 41 / 41 |
+| 10 | 6 / 8 | | | |
+| 20 | 9 / 8 | 18 / 17 | 32 / 32 | 42 / 42 |
+| 30 | 10 / 11 | | | |
+| 40 | 14 / 15 | 21 / 21 | 33 / 33 | 44 / 43 |
+| 50 | 47 / 308 | | | |
+| 60 | **8 623 / 6 738** | 23 / 23 | 38 / 39 | 48 / 48 |
+| 80 | | 34 / **2 661** | 46 / 45 | 53 / 60 |
+| 100 | | **14 431 / 5 341** | 62 / 54 | 56 / 59 |
+
+Over the same cells, ICMP p95 never moved by more than 0.3 ms from the link's
+configured value - saturated or idle. Every millisecond above the header is
+server-side, and the analytical model has no term for it.
+
+The shape, on every node that reaches it, is flat, then a cliff:
+
+- **edge1** stays within 10 ms of its network RTT up to 40 players. At 60 it
+  is 8.6 s. Tick time (MSPT): 4.2-5.0 ms at 40, 6.5 ms at 50, **46 ms at 60**.
+- **edge2** is flat to 60 players (23 ms), and breaks between 80 and 100. At 80
+  the replicates disagree by 80x (34 vs 2 661 ms) - that is the knee itself, the
+  load at which the tail is unstable from one run to the next.
+- **edge3 and cloud** never reach a knee within the 100-player ceiling. Their
+  p95 rises 31 → 62 ms and 41 → 59 ms.
+
+**The tail breaks before the average tick time does.** At edge1, 50 players,
+MSPT is 6.5 ms - an eighth of the 50 ms budget - while p95 has already left the
+flat region (47 and 308 ms). Mean tick time is not an early warning.
+
+Figures: `figures/fig1_p95_vs_players.png` (this table, with the analytical
+model drawn flat beside each node), `figures/fig3_layers_edge1.png` (the four
+probe rungs on edge1).
+
+---
+
+## 8.3 Rank inversion, and where it happens
+
+For one match at a time, which node should host it? Measured p95, averaged over
+both replicates, and the node each model picks
+(`results/model/ranking.csv`):
+
+| players | edge1 | edge2 | edge3 | cloud | measured best | analytical picks | regret |
+|---|---|---|---|---|---|---|---|
+| 1 | 6.0 | 16.3 | 31.0 | 41.0 | edge1 | edge1 | 0 |
+| 20 | 8.5 | 17.5 | 32.0 | 42.0 | edge1 | edge1 | 0 |
+| 40 | 14.5 | 21.0 | 33.0 | 43.5 | edge1 | edge1 | 0 |
+| 60 | 7 680 | 23.0 | 38.5 | 48.0 | **edge2** | edge1 | **7 657 ms** |
+
+The analytical model ranks by distance alone, so it always picks edge1. That
+is right up to 40 players and wrong at 60, by a factor of 330 on the worst
+player's latency. The queueing and learned models both switch to edge2 at 60
+and have zero regret at every load.
+
+This is a narrower and more honest version of the inversion than the
+superseded two-node run claimed (that run had cold worlds, a saturated load
+generator and night-time mobs, all of which made the edge look worse sooner).
+
+---
+
+## 8.4 How well each model predicts latency
+
+Three models, one interface: `predict(node, players) -> p95 ms`
+(`placement/models.py`).
+
+- **analytical**: network RTT + 100 B / 1 Gb/s. No load term.
+- **queueing (M/M/1)**: RTT + s / (1 - u), u = players / (100 x cores). Its one
+  parameter s is the median of `delay x (1 - u)` over stable training cells:
+  2.8 ms on this data. (A least-squares fit was tried first; a few multi-second
+  tails dragged s to 1.4 s, so the model predicted 1.4 s on an idle node. The
+  median is the most favourable fit of the form.)
+- **learned**: RTT + server delay predicted by gradient-boosted trees on
+  (utilization, players, cores). No assumed shape.
+
+`results/model/summary.md`, two tests:
+
+**Cross-replicate** - fit on one grid replicate, predict the other, all 50
+cells:
+
+| model | median abs error | typical factor off | MAE |
+|---|---|---|---|
+| analytical | 5.8 ms | 2.82x | 768 ms |
+| queueing | 1.8 ms | 1.85x | 6 547 ms |
+| learned | **0.9 ms** | **1.28x** | **469 ms** |
+
+The queueing model is good in the flat region and badly wrong near the knee:
+its 1/(1 - u) term explodes to its cap where the measured latency, though
+large, is finite - hence the 6.5 s mean error.
+
+**Leave one node out** - fit on three nodes, predict the fourth, which the
+model has never seen (median abs error / typical factor off):
+
+| held out | analytical | queueing | learned |
+|---|---|---|---|
+| edge1 | 5.3 / 6.5x | 2.6 / 3.86x | **1.3 / 1.96x** |
+| edge2 | 6.8 / 5.56x | **1.8 / 2.16x** | 4.7 / 3.18x |
+| edge3 | 5.3 / 1.28x | 3.0 / 1.18x | **1.5 / 1.06x** |
+| cloud | 5.8 / 1.18x | 3.3 / 1.13x | **1.6 / 1.05x** |
+
+The learned model transfers to an unseen node size best on three of four
+nodes; on edge2 the closed form transfers better. Figure:
+`figures/fig4_predicted_vs_measured.png`.
+
+---
+
+## 8.5 The end-to-end test: deploy each model's placement
+
+The question a placement algorithm is actually asked: split a batch of players
+(matches of 10) across all four nodes at once, minimising the worst player's
+p95. For each total and each model, the brute-force optimum under that model
+was computed (`placement/experiment.py plan`), then **deployed for real** with
+all loaded nodes running concurrently (`controller/deploy.sh`), and measured.
+Nobody's prediction is used to grade anybody: the clock decides.
+
+`results/placement/deployments.csv`, worst node's measured p95 in ms:
+
+| players | analytical | queueing | learned |
+|---|---|---|---|
+| 40 | 26 (edge1=40) | 26 (edge1=40) | 26 (edge1=40) |
+| 80 | **29 897** (edge1=80) | 20 (40/40/0/0) | 20 (40/40/0/0) |
+| 120 | **17 758** (edge1=100, edge2=20) | 31 (40/80/0/0) | 32 (40/70/10/0) |
+| 160 | **19 990** (edge1=100, edge2=60) | 35 (40/80/40/0) | 39 (40/70/50/0) |
+
+Placements are written edge1/edge2/edge3/cloud. Zero kicks in every
+deployment.
+
+What this shows:
+
+1. **The load-blind placement fails catastrophically, and confidently.** It
+   predicts 5-15 ms for every scenario and puts everyone on the nearest node.
+   From 80 players the worst-off players wait 18-30 seconds - 570-1500x worse
+   than either load-aware placement, on the same hardware, the same links and
+   the same players.
+2. **Both load-aware models fix it, and by about the same amount.** Their
+   placements are nearly identical (both keep edge1 at 40) and measure within
+   1-4 ms of each other. The learned model predicted its own deployments to
+   within 1-12 ms (14.0 → 26, 20.9 → 20, 31.6 → 32, 33.2 → 39); the
+   analytical model predicted 5-15 ms for deployments that measured 18-30 s.
+3. **The learned model's advantage is in prediction, not in this decision.**
+   It is the better predictor (§8.4), but for this testbed's ranking question a
+   correctly fitted closed form reaches the same placement. A claim that the
+   learned model *places* better is not supported by these four scenarios.
+
+Figure: `figures/fig5_deployments.png`.
+
+Four earlier learned-model placements are also in `place1`
+(`p40-20-20-0-0`, `p80-20-60-0-0`, `p120-20-60-40-0`, `p160-30-60-70-0`). They
+were planned from data that still contained the contended edge1 cells (§8.6),
+which made edge1 look smaller than it is. They are valid measurements - worst
+p95 17, 22, 35 and 45 ms - and they are in the dataset, but they are not the
+learned model's answer on clean data, so they are not in the table above.
+
+---
+
+## 8.6 Limits - quote these with the results
+
+- **One host, two replicates.** Every node is a container on one laptop. Two
+  replicates give a spread, not a confidence interval. At the knees (edge1 at
+  50, edge2 at 80) the replicates disagree by 6-80x, so the exact player count
+  of a knee is not established; that a knee exists, and roughly where, is.
+- **Host contention is bounded, not eliminated.** Cpusets keep the servers
+  apart from each other and from the load generator, but nothing stops the
+  host's own processes running on the servers' cores without root. The first
+  edge1 pass of `grid1` ran while the laptop was in heavy use: the same work
+  cost 2.4x the CPU (8.4% vs 2.6-3.5% at one player) and moved edge1's knee
+  from 50-60 players to 20-30. Re-run on a quiet host, it matched `grid2`
+  within a few ms. It is kept as `grid1-edge1-contended`, and it is evidence
+  that a shared host can itself be the load the model is blind to.
+- **Capacities were chosen, not discovered.** 0.5 / 1 / 2 / 4 cores and 5 / 15
+  / 30 / 40 ms were picked to make the trade-off exist. The claim is "an
+  inversion exists, is large, and a load-aware model avoids it", not "edge
+  nodes break at 60 players".
+- **Capacity does not scale linearly with cores at the top.** The queueing
+  model assumes 100 players per core. edge1 and edge2 fit that; edge3 and
+  cloud were never pushed past their knee (100-player ceiling), so the
+  assumption is untested there.
+- **The workload is synthetic.** Bots walk, turn and chat once a second.
+  Peaceful mode removes mob AI, which is real server work in a real game.
+  Chat is broadcast to every player, so per-player cost grows with N.
+- **Four scenarios.** The placement result rests on 40-160 players in matches
+  of 10 across four nodes. Larger, more crowded problems are where the models
+  could disagree.
+
+---
+
+## 8.7 Reproducing these numbers
+
+```bash
+cd topology && ./up.sh                      # ends with ALL CHECKS PASSED
+cd ../controller
+./grid.sh grid1 && ./grid.sh grid2 reverse  # ~2 h, keep the host idle
+cd ..
+python3 dataset/build_dataset.py --tags grid1,grid2
+python3 -m placement.experiment plan --players 40,80,120,160
+controller/deploy_plan.sh place1            # ~40 min
+python3 dataset/build_dataset.py --tags grid1,grid2,place1
+python3 -m placement.experiment score --tag place1
+python3 -m model.evaluate                   # results/model/
+python3 -m model.figures                    # figures/
+```
+
+Keep the host idle while the grids run (§8.6) - close browsers, do not
+compile, do not watch video.
