@@ -1,0 +1,254 @@
+{
+  "entries": [
+    {
+      "model": "analytical",
+      "algo": "optimal",
+      "players": 40,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 0,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 5.2
+      },
+      "predicted_worst_p95_ms": 5.2,
+      "predicted_mean_p95_ms": 5.2,
+      "deploy_arg": "edge1=40,edge2=0,edge3=0,cloud=0",
+      "deployment": "p40-40-0-0-0"
+    },
+    {
+      "model": "queueing",
+      "algo": "optimal",
+      "players": 40,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 0,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 17.2
+      },
+      "predicted_worst_p95_ms": 17.2,
+      "predicted_mean_p95_ms": 17.2,
+      "deploy_arg": "edge1=40,edge2=0,edge3=0,cloud=0",
+      "deployment": "p40-40-0-0-0"
+    },
+    {
+      "model": "learned",
+      "algo": "optimal",
+      "players": 40,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 0,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 14.0
+      },
+      "predicted_worst_p95_ms": 14.0,
+      "predicted_mean_p95_ms": 14.0,
+      "deploy_arg": "edge1=40,edge2=0,edge3=0,cloud=0",
+      "deployment": "p40-40-0-0-0"
+    },
+    {
+      "model": "analytical",
+      "algo": "optimal",
+      "players": 80,
+      "match_size": 10,
+      "placement": {
+        "edge1": 80,
+        "edge2": 0,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 5.2
+      },
+      "predicted_worst_p95_ms": 5.2,
+      "predicted_mean_p95_ms": 5.2,
+      "deploy_arg": "edge1=80,edge2=0,edge3=0,cloud=0",
+      "deployment": "p80-80-0-0-0"
+    },
+    {
+      "model": "queueing",
+      "algo": "optimal",
+      "players": 80,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 40,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 17.2,
+        "edge2": 19.2
+      },
+      "predicted_worst_p95_ms": 19.2,
+      "predicted_mean_p95_ms": 18.2,
+      "deploy_arg": "edge1=40,edge2=40,edge3=0,cloud=0",
+      "deployment": "p80-40-40-0-0"
+    },
+    {
+      "model": "learned",
+      "algo": "optimal",
+      "players": 80,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 40,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 14.0,
+        "edge2": 20.9
+      },
+      "predicted_worst_p95_ms": 20.9,
+      "predicted_mean_p95_ms": 17.4,
+      "deploy_arg": "edge1=40,edge2=40,edge3=0,cloud=0",
+      "deployment": "p80-40-40-0-0"
+    },
+    {
+      "model": "analytical",
+      "algo": "optimal",
+      "players": 120,
+      "match_size": 10,
+      "placement": {
+        "edge1": 100,
+        "edge2": 20,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 5.2,
+        "edge2": 15.2
+      },
+      "predicted_worst_p95_ms": 15.2,
+      "predicted_mean_p95_ms": 6.8,
+      "deploy_arg": "edge1=100,edge2=20,edge3=0,cloud=0",
+      "deployment": "p120-100-20-0-0"
+    },
+    {
+      "model": "queueing",
+      "algo": "optimal",
+      "players": 120,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 80,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 17.2,
+        "edge2": 27.2
+      },
+      "predicted_worst_p95_ms": 27.2,
+      "predicted_mean_p95_ms": 23.9,
+      "deploy_arg": "edge1=40,edge2=80,edge3=0,cloud=0",
+      "deployment": "p120-40-80-0-0"
+    },
+    {
+      "model": "learned",
+      "algo": "optimal",
+      "players": 120,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 70,
+        "edge3": 10,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 14.0,
+        "edge2": 22.8,
+        "edge3": 31.6
+      },
+      "predicted_worst_p95_ms": 31.6,
+      "predicted_mean_p95_ms": 20.6,
+      "deploy_arg": "edge1=40,edge2=70,edge3=10,cloud=0",
+      "deployment": "p120-40-70-10-0"
+    },
+    {
+      "model": "analytical",
+      "algo": "optimal",
+      "players": 160,
+      "match_size": 10,
+      "placement": {
+        "edge1": 100,
+        "edge2": 60,
+        "edge3": 0,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 5.2,
+        "edge2": 15.2
+      },
+      "predicted_worst_p95_ms": 15.2,
+      "predicted_mean_p95_ms": 8.9,
+      "deploy_arg": "edge1=100,edge2=60,edge3=0,cloud=0",
+      "deployment": "p160-100-60-0-0"
+    },
+    {
+      "model": "queueing",
+      "algo": "optimal",
+      "players": 160,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 80,
+        "edge3": 40,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 17.2,
+        "edge2": 27.2,
+        "edge3": 33.3
+      },
+      "predicted_worst_p95_ms": 33.3,
+      "predicted_mean_p95_ms": 26.2,
+      "deploy_arg": "edge1=40,edge2=80,edge3=40,cloud=0",
+      "deployment": "p160-40-80-40-0"
+    },
+    {
+      "model": "learned",
+      "algo": "optimal",
+      "players": 160,
+      "match_size": 10,
+      "placement": {
+        "edge1": 40,
+        "edge2": 70,
+        "edge3": 50,
+        "cloud": 0
+      },
+      "predicted_p95_ms": {
+        "edge1": 14.0,
+        "edge2": 22.8,
+        "edge3": 33.2
+      },
+      "predicted_worst_p95_ms": 33.2,
+      "predicted_mean_p95_ms": 23.8,
+      "deploy_arg": "edge1=40,edge2=70,edge3=50,cloud=0",
+      "deployment": "p160-40-70-50-0"
+    }
+  ],
+  "deployments": {
+    "p40-40-0-0-0": "edge1=40,edge2=0,edge3=0,cloud=0",
+    "p80-80-0-0-0": "edge1=80,edge2=0,edge3=0,cloud=0",
+    "p80-40-40-0-0": "edge1=40,edge2=40,edge3=0,cloud=0",
+    "p120-100-20-0-0": "edge1=100,edge2=20,edge3=0,cloud=0",
+    "p120-40-80-0-0": "edge1=40,edge2=80,edge3=0,cloud=0",
+    "p120-40-70-10-0": "edge1=40,edge2=70,edge3=10,cloud=0",
+    "p160-100-60-0-0": "edge1=100,edge2=60,edge3=0,cloud=0",
+    "p160-40-80-40-0": "edge1=40,edge2=80,edge3=40,cloud=0",
+    "p160-40-70-50-0": "edge1=40,edge2=70,edge3=50,cloud=0"
+  }
+}

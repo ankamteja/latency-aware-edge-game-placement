@@ -1,0 +1,5 @@
+players,measured_edge1,measured_edge2,measured_edge3,measured_cloud,measured_best,analytical_pick,analytical_regret_ms,queueing_pick,queueing_regret_ms,learned_pick,learned_regret_ms
+1,6.0,16.3,31.0,41.0,edge1,edge1,0.0,edge1,0.0,edge1,0.0
+20,8.5,17.5,32.0,42.0,edge1,edge1,0.0,edge1,0.0,edge1,0.0
+40,14.5,21.0,33.0,43.5,edge1,edge1,0.0,edge1,0.0,edge1,0.0
+60,7680.4,23.0,38.5,48.0,edge2,edge1,7657.4,edge2,0.0,edge2,0.0

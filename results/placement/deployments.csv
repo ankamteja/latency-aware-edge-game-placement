@@ -1,0 +1,13 @@
+tag,players,model,deployment,placement,predicted_worst_p95_ms,measured_worst_p95_ms,measured_pooled_p95_ms,measured_pooled_p99_ms,measured_node_p95_ms,kicks
+place1,40,analytical,p40-40-0-0-0,"edge1=40,edge2=0,edge3=0,cloud=0",5.2,26.0,26.0,162.0,"{""edge1"": 26.0}",0
+place1,40,queueing,p40-40-0-0-0,"edge1=40,edge2=0,edge3=0,cloud=0",17.2,26.0,26.0,162.0,"{""edge1"": 26.0}",0
+place1,40,learned,p40-40-0-0-0,"edge1=40,edge2=0,edge3=0,cloud=0",14.0,26.0,26.0,162.0,"{""edge1"": 26.0}",0
+place1,80,analytical,p80-80-0-0-0,"edge1=80,edge2=0,edge3=0,cloud=0",5.2,29897.2,29897.2,31165.0,"{""edge1"": 29897.2}",0
+place1,80,queueing,p80-40-40-0-0,"edge1=40,edge2=40,edge3=0,cloud=0",19.2,20.0,19.0,24.0,"{""edge1"": 12.0, ""edge2"": 20.0}",0
+place1,80,learned,p80-40-40-0-0,"edge1=40,edge2=40,edge3=0,cloud=0",20.9,20.0,19.0,24.0,"{""edge1"": 12.0, ""edge2"": 20.0}",0
+place1,120,analytical,p120-100-20-0-0,"edge1=100,edge2=20,edge3=0,cloud=0",15.2,17758.0,17520.3,18688.8,"{""edge1"": 17758.0, ""edge2"": 19.0}",0
+place1,120,queueing,p120-40-80-0-0,"edge1=40,edge2=80,edge3=0,cloud=0",27.2,31.0,29.0,36.0,"{""edge1"": 13.0, ""edge2"": 31.0}",0
+place1,120,learned,p120-40-70-10-0,"edge1=40,edge2=70,edge3=10,cloud=0",31.6,32.0,31.0,37.0,"{""edge1"": 15.0, ""edge2"": 29.0, ""edge3"": 32.0}",0
+place1,160,analytical,p160-100-60-0-0,"edge1=100,edge2=60,edge3=0,cloud=0",15.2,19989.7,19267.7,23549.9,"{""edge1"": 19989.7, ""edge2"": 28.0}",0
+place1,160,queueing,p160-40-80-40-0,"edge1=40,edge2=80,edge3=40,cloud=0",33.3,35.0,34.0,41.0,"{""edge1"": 15.0, ""edge2"": 35.0, ""edge3"": 34.0}",0
+place1,160,learned,p160-40-70-50-0,"edge1=40,edge2=70,edge3=50,cloud=0",33.2,39.0,35.0,41.0,"{""edge1"": 17.0, ""edge2"": 30.0, ""edge3"": 39.0}",0
