@@ -445,7 +445,7 @@ cell, cloud at 80 players:
 
 | bots per process | p50 | p95 | p99 |
 |---|---|---|---|
-| 80 (one process) | - | 278 ms | - |
+| 80 (one process) | 125 ms | 278 ms | 324 ms |
 | 20 | 44 ms | 56 ms | 63 ms |
 | 10 | 43 ms | 56 ms | 63 ms |
 
