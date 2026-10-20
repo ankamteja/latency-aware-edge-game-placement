@@ -108,10 +108,12 @@ for n in $NODES; do
 done
 
 echo "== host headroom"
-# Memory, not CPU, is the binding constraint with four servers.
+# Memory, not CPU, is the binding constraint with four servers. The servers
+# themselves cannot swap (up.sh), so this guards the bots and the host; 1500 MB
+# is the same floor collect.sh and deploy.sh wait for before every cell.
 avail=$(free -m | awk '/^Mem:/{print $7}')
 swap=$(free -m | awk '/^Swap:/{print $3}')
-[ "$avail" -ge 2048 ] && ok "${avail}M available, ${swap}M swap in use" \
+[ "$avail" -ge 1500 ] && ok "${avail}M available, ${swap}M swap in use" \
                       || bad "only ${avail}M available (${swap}M swap in use) - close other apps before collecting"
 
 echo "== server swap (a swapped-out heap page faulting mid-tick inflates MSPT)"

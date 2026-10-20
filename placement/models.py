@@ -132,10 +132,14 @@ def load_rows(path=REPO / "data" / "dataset.csv", runs=None, deployments=False):
             for k in ("cores", "bots", "players", "utilization", "net_rtt_ms",
                       "rtt_p50_ms", "rtt_p95_ms", "rtt_p99_ms", "net_rtt_idle_ms"):
                 row[k] = float(r[k])
-            # the load offered is the bot count; `players` is the server's own
-            # count and dips while a bot respawns
-            row["players"] = row["bots"]
-            row["utilization"] = row["bots"] / (PLAYERS_PER_CORE * row["cores"])
+            # The load is what the server actually held: the median of its own
+            # player count over the window. Not the bots launched - an
+            # overloaded node stops admitting logins (edge1 held 50 of 60).
+            # A median is untouched by the brief dip of a respawning bot.
+            if row["players"] != row["players"]:          # NaN: no samples
+                row["players"] = row["bots"]
+            row["players"] = round(row["players"])
+            row["utilization"] = row["players"] / (PLAYERS_PER_CORE * row["cores"])
             out.append(row)
     return out
 

@@ -29,7 +29,7 @@ from placement.models import MODELS, PLAYERS_PER_CORE, load_nodes, load_rows
 
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "results" / "model"
-GRID_RUNS = ("grid-a", "grid-b")
+GRID_RUNS = ("grid1", "grid2")
 
 
 def cells(runs):
@@ -45,8 +45,9 @@ def node_of(row, nodes):
 def errors(model, test, nodes):
     out = []
     for r in test:
-        pred = model.predict(node_of(r, nodes), r["bots"])
+        pred = model.predict(node_of(r, nodes), r["players"])
         out.append({"cell_id": r["cell_id"], "node": r["node"], "bots": int(r["bots"]),
+                    "players": r["players"],
                     "measured_p95_ms": r["rtt_p95_ms"], "predicted_p95_ms": round(pred, 2),
                     "abs_err_ms": round(abs(pred - r["rtt_p95_ms"]), 2),
                     "log_err": round(abs(math.log(pred) - math.log(r["rtt_p95_ms"])), 4)})
@@ -70,7 +71,7 @@ def cross_replicate(nodes):
     res, detail = {}, []
     for name in MODELS:
         errs = []
-        for train, test in (("grid-a", "grid-b"), ("grid-b", "grid-a")):
+        for train, test in (("grid1", "grid2"), ("grid2", "grid1")):
             m = fit(name, load_rows(runs=[train]))
             e = errors(m, cells([test]), nodes)
             for x in e:
