@@ -49,8 +49,13 @@ esac
 # bash has no floating point, so work it out with awk.
 half() { awk -v r="$1" 'BEGIN{printf "%.3fms", r/2}'; }
 
+# Applied with tc inside the container rather than `containerlab tools netem
+# set`: on newer kernels containerlab installs the qdisc and then fails reading
+# its stats back ("extractXStats(): unsupported kind: netem"), which under
+# set -e aborts after the first link. limit 10000 matches what containerlab
+# used, so the queue depth is unchanged from earlier runs.
 set_delay() {  # container interface delay
-  containerlab tools netem set -n "$1" -i "$2" --delay "$3" >/dev/null
+  docker exec "$1" tc qdisc replace dev "$2" root netem delay "$3" limit 10000
 }
 
 echo "==> netem profile: $PROFILE"
