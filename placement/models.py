@@ -62,15 +62,14 @@ class Queueing(Analytical):
         self.s_ms = s_ms
 
     def fit(self, rows):
-        # least squares for s on server delay = s / (1 - u), stable rows only
-        x, y = [], []
-        for r in rows:
-            u = r["utilization"]
-            if u < 0.99:
-                x.append(1.0 / (1.0 - u))
-                y.append(max(r["rtt_p95_ms"] - r["net_rtt_ms"], 0.0))
-        x, y = np.array(x), np.array(y)
-        self.s_ms = float((x @ y) / (x @ x))
+        # server delay = s / (1 - u)  =>  s = delay * (1 - u) for every stable
+        # row; take the median. Least squares on raw ms was tried first and is
+        # a strawman: a few multi-second tails near the knee set s to ~1.4 s,
+        # so the model predicted 1.4 s on an idle node. The median keeps s at
+        # the typical stable-load delay, the most favourable fit of this form.
+        s = [max(r["rtt_p95_ms"] - r["net_rtt_ms"], 0.0) * (1.0 - r["utilization"])
+             for r in rows if r["utilization"] < 0.99]
+        self.s_ms = float(np.median(s))
         return self
 
     def predict(self, node, players):
