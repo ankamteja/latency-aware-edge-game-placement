@@ -493,3 +493,46 @@ values (5.06 / 15.08 / 30.04 / 40.07 ms minimum RTT).
 
 **Rule.** After any reboot, `verify.sh` before anything else. A healthy
 container is not a connected one.
+
+---
+
+## 6.18 The same cell measured 10x worse in the second replicate
+
+**Symptom.** The two grid replicates agreed on edge2, edge3 and cloud, but not
+on edge1. With a single player, edge1 measured p95 7 ms in the first replicate
+and 84 ms in the second, at 9% vs 46% CPU; at 20 players, 19 ms vs 2134 ms.
+The idle baseline (0 players) was 2% CPU in both, so the server was not busy
+on its own - one player made it busy.
+
+**Cause.** The game's day/night cycle. Each server runs its own 20-minute
+clock, and at night hostile mobs spawn around every player and path-find
+toward them. The edge1 log for the bad cell:
+
+```
+bot0 logged in ... at ([world]0.65, 62.0, 14.2)
+Can't keep up! Is the server overloaded? Running 2558ms or 51 ticks behind
+bot0 was shot by Skeleton
+Can't keep up! Is the server overloaded? Running 13993ms or 279 ticks behind
+bot0 was slain by Zombie
+```
+
+One bot at night put a 0.5-core server 14 s behind; the same bot, minutes
+later by daylight, ran it at 10% CPU with p95 7 ms. The four clocks drift
+independently, so whether a cell landed in day or night was chance - an
+uncontrolled variable larger than the one being measured, and worst on the
+smallest node, exactly where the knee is.
+
+Ruled out on the way: bot positions (every bot's saved position is within
+35 blocks of spawn on every node, so they are not wandering into unwarmed
+terrain), entity build-up (`paper entity list * world` showed under 100
+entities per world), and host memory (no server swap, 2.5-3 GB available).
+
+**Fix.** `topology/world_rules.sh`: peaceful difficulty, permanent noon, no
+weather, all non-player entities removed. `up.sh` runs it and `verify.sh`
+fails if `doDaylightCycle` is not `false` or the difficulty is not peaceful.
+The workload is now players only; the earlier replicates are kept as
+`results/raw/grid1-daynight` and `grid2-daynight` and are not trained on.
+
+**Why this matters beyond the testbed.** It is a real effect - mob AI is
+server work that scales with players - but it is a second load source the
+experiment does not control. Freezing it keeps "players" the only variable.

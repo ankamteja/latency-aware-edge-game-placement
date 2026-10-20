@@ -53,6 +53,9 @@ for node in $NODES; do
   done
 done
 
+echo "==> freezing time, weather and mobs"
+./world_rules.sh
+
 echo "==> applying netem"
 ./netem.sh "$PROFILE"
 

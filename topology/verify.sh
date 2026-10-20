@@ -102,6 +102,12 @@ for n in $NODES; do
     online=$(docker exec "$(ctr "$n")" rcon-cli list 2>/dev/null | tr -d '\r')
     ok "$n accepting connections | $online"
     case "$online" in *"are 0 "*) ;; *) bad "$n still has players from a previous run";; esac
+    daylight=$(docker exec "$(ctr "$n")" rcon-cli "gamerule doDaylightCycle" 2>/dev/null | tr -d '\r')
+    diff=$(docker exec "$(ctr "$n")" rcon-cli "difficulty" 2>/dev/null | tr -d '\r')
+    case "$daylight$diff" in
+      *false*[Pp]eaceful*) ok "$n time frozen, peaceful" ;;
+      *) bad "$n world rules not applied (topology/world_rules.sh): $daylight / $diff" ;;
+    esac
   else
     bad "$n not answering a status ping"
   fi
