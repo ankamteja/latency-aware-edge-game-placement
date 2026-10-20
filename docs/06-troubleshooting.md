@@ -341,3 +341,119 @@ docker ps --filter name=clab-edgegame --format '{{.Names}}\t{{.Status}}'
 **Fix.** Re-run that cell with a lower player count, or accept the crash as the
 result for that point and record it as such. Do not silently keep a partial
 cell.
+
+---
+
+## 6.13 `containerlab tools netem set` fails: `unsupported kind: netem`
+
+**Symptom.** `up.sh` stops right after "applying netem":
+
+```
+ERROR  Could not get all qdiscs: extractXStats(): unsupported kind: netem.
+```
+
+**Cause.** On newer kernels containerlab installs the qdisc correctly and then
+fails reading its statistics back. Under `set -e` the script dies after the
+first link, so only one link has a delay.
+
+**Fix.** `netem.sh` now applies the qdisc with `tc` inside each container:
+
+```bash
+docker exec <container> tc qdisc replace dev eth1 root netem delay 2.5ms limit 10000
+```
+
+`limit 10000` is the queue length containerlab used, so nothing else changes.
+`verify.sh` still measures the delay that results.
+
+---
+
+## 6.14 A server restarted by itself during warm-up
+
+**Symptom.** In the server log:
+
+```
+The server has not responded for 10 seconds! Creating thread dump
+...
+Minecraft server failed. ... {"exitCode": 70}
+```
+
+and `rcon-cli` refuses connections for a minute while the container restarts.
+
+**Cause.** The main thread stalled for over 60 s - Paper's watchdog limit -
+while doing ordinary work. The host was paging: `free -m` showed 6.5 GB of
+swap in use and `memory.swap.current` showed hundreds of MB of each server's
+heap swapped out. A tick that touches a swapped page waits for the disk.
+
+**Why it matters even without a crash.** A shorter stall does not restart
+anything; it just shows up as latency, which the data would blame on player
+load. This is the most dangerous kind of artefact: plausible numbers.
+
+**Fix.** Two parts, both in place:
+
+1. `up.sh` sets `--memory-swap` equal to `--memory` on every server right
+   after deploy, which forbids that container from swapping. Under memory
+   pressure the kernel now has to reclaim from other processes. It must run
+   before the heaps grow: pages already in swap stay there.
+2. The cloud heap was cut from 2G to 1G (all four servers now use 1G), which
+   is plenty for 100 players.
+
+`verify.sh` fails if any server has more than 64 MB in swap, and every cell's
+`meta.json` records `server_swap_mb_end` and `host_mem_available_mb_end`.
+
+---
+
+## 6.15 The bots used 47 MB each
+
+**Symptom.** 30 bots in one process: 1.4 GB resident. 100 bots would not fit
+next to four JVMs on a 16 GB host.
+
+**Cause.** The server sends each player all 441 chunk columns within view
+distance 10, and mineflayer keeps a private parsed copy per bot. It is live
+data, not garbage: capping the V8 heap makes the process die with an
+out-of-memory error.
+
+**Fix.** `bot.js` shares parsed columns between the bots of one process.
+Every bot still receives and parses every column - server work and wire
+traffic are unchanged - and a column another bot already holds replaces the
+fresh copy. Same 30 bots on edge3: 1430 MB -> 235 MB, with server CPU (~35% vs
+~37%), MSPT (6.4 vs 6.5 ms) and sample count unchanged.
+
+The tempting alternative, dropping chunks far from the bot, was rejected: the
+server only sends *new* chunks at the edge of view distance, so a bot that
+walks would soon stand in a chunk it had thrown away, and its movement - part
+of the load - would change.
+
+---
+
+## 6.16 The load generator was measuring itself
+
+**Symptom.** On the strong nodes, latency at 60-100 players was far higher
+than their CPU or MSPT could explain: cloud at 80 players, p95 278 ms, with
+the server using 0.6 of its 4 cores and ticking in 7 ms.
+
+**Cause.** Every chat message is broadcast to every player, so N bots receive
+N^2 messages a second - 6,400 at 80 bots - and one Node process handled all of
+them on a single thread. `top` in the client showed it at 70-100% of a core.
+A message that arrived while the event loop was busy waited, and that wait
+was recorded as round-trip time. Real players are separate machines; this
+delay exists only in the testbed.
+
+**Fix.** `bots/spawn.sh` runs at most 10 bots per process (same overall join
+schedule, one join every 500 ms), and each process logs its own event-loop
+delay p99 every 5 s as `epoch,proc<K>,loop,<ms>` lines in `bot.csv`. Same
+cell, cloud at 80 players:
+
+| bots per process | p50 | p95 | p99 |
+|---|---|---|---|
+| 80 (one process) | - | 278 ms | - |
+| 20 | 44 ms | 56 ms | 63 ms |
+| 10 | 43 ms | 56 ms | 63 ms |
+
+20 and 10 agree, so the client is no longer in the measurement. The grid
+measured with one process is kept as `results/raw/grid-a` as evidence of the
+artefact; nothing is trained on it. The earlier two-node `run1` and the
+single-node sweeps also used one process - their high-load cells carry the
+same inflation.
+
+**How to check a run.** The `loop` lines should stay in the tens of ms. If they
+climb toward the RTT values, the client is saturated again.
