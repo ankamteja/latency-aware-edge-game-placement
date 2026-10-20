@@ -20,6 +20,19 @@ docker build -q -f Dockerfile.client -t edgegame-client:1 .
 echo "==> containerlab deploy"
 containerlab deploy -t edge-cloud.clab.yml --reconfigure
 
+echo "==> forbidding swap for the game servers"
+# Docker lets a container swap up to its memory limit again on top of it, and
+# the kernel proactively pushes idle JVM heap pages out even while the host has
+# memory available. A tick that touches a swapped page stalls on disk - that
+# stall once tripped Paper's 60 s watchdog and restarted a node mid-run.
+# memory-swap equal to memory means "no swap": under pressure the kernel must
+# reclaim from other processes instead. Done right after deploy, while the
+# heaps are still small, because pages already swapped stay swapped.
+for node in $NODES; do
+  mem=$(docker inspect -f '{{.HostConfig.Memory}}' "$(ctr "$node")")
+  docker update --memory "$mem" --memory-swap "$mem" "$(ctr "$node")" >/dev/null
+done
+
 echo "==> waiting for every server to answer a status ping (up to 5 min each)"
 # mc-monitor ships inside the itzg image. It speaks the Minecraft server-list
 # protocol, so a success means the server finished loading the world and is

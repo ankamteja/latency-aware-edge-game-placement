@@ -28,8 +28,13 @@
 # sets; cpu-set ranges are disjoint so no node can steal CPU from another, and
 # the load generator cannot steal CPU from the servers it is measuring.
 #
-# The four servers are identical apart from cpu, cpu-set, memory and heap:
-# same image, same jar, same world, same settings. TYPE: CUSTOM runs the jar
+# The four servers are identical apart from cpu, cpu-set and container memory:
+# same image, same jar, same world, same settings, same 1G heap. The cloud heap
+# was 2G until 2026-10-20; it was cut to 1G because four JVMs plus 100+ bots
+# on a 16 GB host pushed heap pages to swap, and a tick that faults on a
+# swapped page stalls the game thread (one stall tripped Paper's 60 s watchdog).
+# 100 players fit comfortably in 1G on every node, so the heap is no longer a
+# difference between them. TYPE: CUSTOM runs the jar
 # already sitting in /data - the default PAPER type re-checks api.papermc.io on
 # every start, and one network hiccup then stops the whole testbed booting.
 #
@@ -140,7 +145,7 @@ topology:
         ONLINE_MODE: "FALSE"
         TYPE: CUSTOM
         CUSTOM_SERVER: /data/paper-1.21.4-232.jar
-        MEMORY: 2G
+        MEMORY: 1G
       exec:
         - ip addr add 10.0.4.2/30 dev eth1
         - ip link set eth1 up
