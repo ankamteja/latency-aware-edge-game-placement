@@ -457,3 +457,39 @@ same inflation.
 
 **How to check a run.** The `loop` lines should stay in the tens of ms. If they
 climb toward the RTT values, the client is saturated again.
+
+---
+
+## 6.17 After a host reboot the lab looks up but nothing is reachable
+
+**Symptom.** After the host crashed and came back, `docker ps` listed every
+`clab-edgegame-*` container as `Up (healthy)` and every server answered
+`mc-monitor` from inside its own container, but `verify.sh` failed on every
+network check:
+
+```
+FAIL client eth1 is not 10.0.1.1
+FAIL edge1 missing netem (client:eth1 'none', edge1:eth1 'none')
+FAIL edge1 (10.0.1.2) unreachable
+```
+
+**Cause.** Docker restarts the containers on boot (restart policy), but the
+veth pairs between them are created by `containerlab deploy`, not by Docker.
+They live in the containers' network namespaces and die with them. A restarted
+container comes back with only its management interface: no `eth1..eth4`, no
+data-plane addresses, and therefore no netem qdiscs either. The servers are
+healthy - they simply have no link to the client.
+
+**Fix.** Run `topology/up.sh` again. It redeploys with `--reconfigure`
+(the node data in `topology/nodes/` is bind-mounted and survives, so the worlds
+stay warm), re-forbids swap, reapplies netem and ends with `verify.sh`.
+
+**What it did to the data.** Nothing that was kept: the crash interrupted
+`grid1` after its last edge1 cell, so `results/raw/grid1/` held edge1 only.
+The remaining nodes were collected after the redeploy under the same tag;
+every cell's `meta.json` records its own time, and the idle-baseline RTT
+recorded per cell (`net_rtt_idle_ms`) confirms the links came back at the same
+values (5.06 / 15.08 / 30.04 / 40.07 ms minimum RTT).
+
+**Rule.** After any reboot, `verify.sh` before anything else. A healthy
+container is not a connected one.
