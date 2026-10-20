@@ -1,0 +1,19 @@
+{
+  "tag": "place1",
+  "deployment": "p40-30-10-0-0",
+  "placement": "edge1=30,edge2=10,edge3=0,cloud=0",
+  "target": "edge1",
+  "target_ip": "10.0.1.2",
+  "bots": 30,
+  "players_held": 30,
+  "idle_seconds": 15,
+  "duration_seconds": 90,
+  "bots_start_ms": 1792527922655,
+  "steady_start_ms": 1792527947711,
+  "steady_end_ms": 1792528037774,
+  "cpu_max": "50000 100000",
+  "cpuset": "0-1",
+  "host_mem_available_mb_end": 2758,
+  "server_swap_mb_end": 0,
+  "netem_delay": "delay 2.5ms"
+}

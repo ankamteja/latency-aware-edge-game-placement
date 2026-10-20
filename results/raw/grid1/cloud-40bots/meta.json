@@ -1,0 +1,17 @@
+{
+  "tag": "grid1",
+  "target": "cloud",
+  "target_ip": "10.0.4.2",
+  "bots": 40,
+  "players_held": 40,
+  "idle_seconds": 15,
+  "duration_seconds": 90,
+  "bots_start_ms": 1792523248616,
+  "steady_start_ms": 1792523278647,
+  "steady_end_ms": 1792523368676,
+  "cpu_max": "400000 100000",
+  "cpuset": "7-11",
+  "host_mem_available_mb_end": 1964,
+  "server_swap_mb_end": 0,
+  "netem_delay": "delay 20ms"
+}
