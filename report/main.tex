@@ -35,10 +35,12 @@ load-aware placements stay at 20--39\,ms. The learned model predicts latency
 best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
 held-out third replicate) but, on these scenarios, does not place better than
 the fitted closed form. Run as a live controller on the same schedule of
-players, the load-blind model never moves a match and its worst players sit
-at a median of 1.06\,s, queueing's at 166\,ms and the learned model's at
-33\,ms. When one node silently loses half its CPU, in our runs only a variant
-that corrects itself from live measurements moves players off it.
+players (three runs each), the load-blind model never moves a match and its
+worst players sit at a median of 1.1\,s, queueing's at 99\,ms and the learned
+model's at 39\,ms. When one node silently loses half its CPU, the offline
+models keep their players on it; only a variant that corrects itself from
+live measurements moves them, though in two of its three runs it had already
+left that node before the cut.
 \end{abstract}
 
 \section{Introduction}
@@ -479,61 +481,70 @@ players & simulated & measured & predicted & measured \\
 
 \textbf{Same schedule, three controllers.} A match of ten players arrives
 every 25\,s up to 140 players, holds for 150\,s, and leaves until 60 remain
-(13\,min). Table~\ref{tab:live} and Fig.~\ref{fig:live}. The analytical
+(13\,min). Each controller ran three times; Table~\ref{tab:live} gives the
+median and range over the runs and Fig.~\ref{fig:live} each controller's
+median run. The analytical
 controller never moves a match, by construction: its prediction for a node
 does not change with load, so no move ever looks like an improvement. The
-run measures the cost of that: edge1 fills to 100 players and its p95 stays
-above 10\,s until departures empty it. The queueing controller moves matches
-as often as the learned one, but its curve depends on utilization alone and
-rates edge2 at 80 players ($u=0.8$) at 27\,ms; edge2's knee is at 80 players,
-and live it sat at 1.8--3.4\,s for about 200\,s. The learned model
-predicts 65\,ms there, stops edge2 at 70 and uses edge3: the effect of
-Fig.~\ref{fig:util} deciding a placement. Part of the gap is chance at a
-knee: both runs held edge1 at exactly 40 players, which stayed backlogged
-in one run and recovered in the other. The learned controller keeps the
-worst player's p95 at a median of 33\,ms; its excursions over 100\,ms are the
-10--25\,s after each new match lands on edge1 and before it is moved away. Each
-move costs its ten players a reconnect: about 6\,s from the stop until the
-last of them sends a sample from the new node, in every run.
+runs measure the cost of that: edge1 fills to 100 players and its p95 is in
+the seconds for minutes. In one run it fell back to about 100\,ms after
+360\,s with 100 players still assigned, while edge1's tick time fell from
+280 to 10--35\,ms; the timeline records assigned rather than connected
+players, but this matches the deployments, where an overloaded edge1 kept
+only 63--71 of 100. The queueing controller moves matches as often as the
+learned one, but its curve depends on utilization alone and rates edge2 at
+80 players ($u=0.8$) at 27\,ms. edge2's knee is at 80 players: in all three
+runs the queueing controller loaded edge2 to 80, and edge2's p95 stayed above
+1\,s for 14 to 174\,s, peaking at 1.7--4.9\,s. The learned model predicts
+65\,ms there, stops edge2 at 70 in every run and uses edge3: the effect of
+Fig.~\ref{fig:util} deciding a placement. Almost all of the learned
+controller's time over 100\,ms is edge1 holding 40 players, its knee: the
+grid measured 14.5\,ms there, but live, with every node loaded, edge1 at 40
+was often backlogged, as in the deployed placements (26\,ms). Each move costs
+its ten players a reconnect: about 6\,s from the stop until the last of them
+sends a sample from the new node (5.9--6.3\,s, mean per run).
 
 Every model is also scored in the background on each run. A \emph{window} is
 10\,s of unchanged load on one node, so a run yields one window per busy
 node every 10\,s; each is graded against every model's prediction for it,
 made before the window was seen. Table~\ref{tab:shadow} gives F1 for ``this
-node is over 100\,ms''. In the queueing run the windows over budget are
-edge1 backlogged at 40 players and edge2 at 80: loads every offline curve
-calls healthy. Only the model that corrects itself from the measurements
-catches them.
+node is over 100\,ms''. Under the queueing and learned controllers the
+windows over budget are edge1 backlogged at 40 players and edge2 at 80: loads
+every offline curve calls healthy, so all three offline models score 0 in
+all six runs. Only the model that corrects itself from the measurements
+catches some of them.
 
 \begin{table}[t]
 \centering
 \caption{F1 for ``node over 100\,ms'', every model scored on the same live
-windows}
+windows. Median [min, max] over three runs per controller; 91--137 windows
+per run, 7--36 of them over 100\,ms.}
 \label{tab:shadow}
-\setlength{\tabcolsep}{3.5pt}
+\setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{lrrrr}
 \toprule
-run (windows, over 100\,ms) & analyt. & queue. & learned & live-corr. \\
+in control & analyt. & queue. & learned & live-corr. \\
 \midrule
-analytical in control (91, 28) & 0.00 & 0.87 & 0.87 & 0.95 \\
-queueing in control (127, 36)  & 0.00 & 0.00 & 0.00 & 0.78 \\
+analytical & 0.00 & 0.87 [0.74, 0.87] & 0.87 [0.73, 0.88] & 0.94 [0.77, 0.95] \\
+queueing   & 0.00 & 0.00 & 0.00 & 0.71 [0.65, 0.78] \\
+learned    & 0.00 & 0.00 & 0.00 & 0.35 [0.25, 0.52] \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[t]
 \centering
-\caption{Live controller, same 13-minute schedule, one run each (worst
-node's p95)}
+\caption{Live controller, same 13-minute schedule, worst node's p95. Median
+[min, max] over three runs each.}
 \label{tab:live}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{lrrrr}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lrrr}
 \toprule
-controller & median & max & over 100\,ms & moves \\
+controller & median & over 100\,ms & moves \\
 \midrule
-analytical & 1\,058\,ms & 19.6\,s & 53\% & 0 \\
-queueing   & 166\,ms    & 5.7\,s  & 53\% & 11 \\
-learned    & 33\,ms     & 817\,ms & 18\% & 10 \\
+analytical & 1.1\,s [76\,ms, 4.5\,s] & 53\% [46, 62] & 0 \\
+queueing   & 99\,ms [72, 166]        & 50\% [46, 53] & 11 \\
+learned    & 39\,ms [33, 47]         & 33\% [18, 41] & 10 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -541,42 +552,51 @@ learned    & 33\,ms     & 817\,ms & 18\% & 10 \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig6_live_ab.png}
-\caption{Worst node's p95 over time under each controller, same arrivals and
-departures (bottom). Ticks mark migrations.}
+\caption{Worst node's p95 over time under each controller (its median run),
+same arrivals and departures (bottom). Ticks mark migrations.}
 \label{fig:live}
 \end{figure}
 
 \textbf{A node gets slower and no model is told.} With eight matches
-settled, edge1's CPU quota is cut from 0.5 to 0.25 cores at 220\,s
-(Fig.~\ref{fig:drop}, Table~\ref{tab:drop}). The offline models keep
-predicting edge1's 0.5-core curve: they keep 40 players there and are over
+settled, edge1's CPU quota is cut from 0.5 to 0.25 cores at 220\,s; the
+change takes effect at 222--224\,s (Fig.~\ref{fig:drop},
+Table~\ref{tab:drop}). The offline models keep predicting edge1's 0.5-core
+curve: in all six of their runs they keep 40 players there and are over
 100\,ms 99--100\% of the time after the cut. A variant corrects the learned
-model while it runs: after each steady 10\,s window it estimates a per-node factor $c$: the node
-with $P$ players now behaves like the grid's node with $c \times P$ players,
-so $c=2$ means each player costs twice as much as before. Its first version
-noticed the cut and moved two matches off, 30 and 70\,s after it, but
-light, healthy windows below the new knee pulled $c$ back down and it moved a
-match back, which then saw 3.9\,s. With a five-minute memory of loads
-measured over budget, two runs were over 100\,ms for 4\% and 13\% of the
-time after the cut. The spread is real: in the second run its own moves
-briefly loaded the nodes they landed on, and when the memory expired it
-probed edge1 again with one match, which saw 3--4\,s while rejoining. Moves
-are not free and the controller does not model their cost. The memory was
-added after the first run; the runs show the mechanism, not a tuned result.
+model while it runs: after each 10\,s window of unchanged load it estimates a
+per-node factor $c$: the node with $P$ players now behaves like the grid's
+node with $c \times P$ players, so $c=2$ means each player costs twice as
+much as before. Its first version noticed the cut and moved two matches off,
+27 and 67\,s after it, but light, healthy windows below the new knee pulled
+$c$ back down and it moved a match back, which then saw up to 4.1\,s. The version
+with a five-minute memory of loads measured over budget was over 100\,ms for
+6\% [4, 13] of the time after the cut in three runs, but only one of them
+tests detection. The correction also learns from windows in which a new match
+is still logging in, so $c$ rose to 1.9 with the first ten players, and
+repeated arrivals on edge1 kept it high: in two runs it was 2.2 and 3.1
+before the cut, and edge1 already held 0 and 10 players when the CPU was cut.
+Those runs show a controller staying off a node it has learned to distrust,
+not one noticing a change. In the third, edge1 held 30 players at the cut and
+the controller moved a match off 27\,s later. In the run with 13\% the
+memory expired at 500\,s and a match moved back to edge1 and saw up to 4.5\,s
+while rejoining. The caution costs moves (8--12 against the offline models'
+4), and the memory was added after the first run: the runs show the
+mechanism, not a tuned result.
 
 \begin{table}[t]
 \centering
-\caption{edge1's CPU halved at 220\,s: time over 100\,ms}
+\caption{edge1's CPU halved at 220\,s: time over 100\,ms, median [min, max]
+over runs, and edge1's players just before the cut in each run}
 \label{tab:drop}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{lrrr}
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabular}{lrrrr}
 \toprule
-controller & runs & whole run & after the cut \\
+controller & runs & edge1 & whole run & after the cut \\
 \midrule
-queueing                 & 1 & 83\%         & 100\% \\
-learned                  & 2 & 74\%, 82\%   & 99\%, 99\% \\
-live, first version      & 1 & 20\%         & 21\% \\
-live, with memory        & 2 & 2\%, 14\%    & 4\%, 13\% \\
+queueing             & 3 & 40, 40, 40 & 83\% [80, 85] & 100\% [99, 100] \\
+learned              & 3 & 40, 40, 40 & 82\% [74, 84] & 100\% [99, 100] \\
+live, first version  & 1 & 40         & 20\%          & 21\% \\
+live, with memory    & 3 & 30, 0, 10  & 9\% [2, 14]   & 6\% [4, 13] \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -605,14 +625,16 @@ usually are, will never see it.
 than the node's size and its current player count. The deployed placements
 show that a closed form with one fitted parameter is enough to avoid the
 failure at the four offline scenarios. Live, the same form loaded edge2 past
-its knee because utilization alone does not capture how per-player cost
-grows with the number of players; in that run the learned model's more
-accurate curve kept it off. Accuracy matters most where a budget has to be checked near a knee,
+its knee in all three runs because utilization alone does not capture how
+per-player cost grows with the number of players; the learned model's more
+accurate curve kept it off in all three. Accuracy matters most where a budget has to be checked near a knee,
 not where nodes are only ranked. The
 live runs add a requirement no offline model meets: capacity is not a
 constant. A setting on the host cut it roughly threefold in our own rig (Section~\ref{sec:threats}), and
 in our runs a CPU cut no model was told about was handled only by a
-controller that kept comparing its predictions with what it measured.
+controller that kept comparing its predictions with what it measured. That
+controller also needs to know which measurements to trust: learning from the
+seconds in which players are still logging in made it distrust a healthy node.
 
 \section{Conclusion and Future Work}\label{sec:threats}
 
@@ -622,11 +644,12 @@ seconds: deployed, its placements left the worst players waiting 18--30\,s
 where a load-aware placement measured 20--39\,ms on the same hardware. A model
 learned from measurements predicts latency best; at the four offline
 scenarios a fitted M/M/1 term already placed as well, but run live on the
-same schedule it loaded a node past its knee (median 166\,ms) where the
-learned controller kept the worst players at a median of 33\,ms and the
-load-blind one never moved a match. In our runs a node that silently slowed down was
-handled only by a model that keeps learning from measurements and
-remembers the loads it has seen fail. The practical
+same schedule it loaded a node past its knee in all three runs (median
+99\,ms) where the learned controller kept the worst players at a median of
+39\,ms and the load-blind one never moved a match. In our runs a node that
+silently slowed down was left only by a model that keeps learning from
+measurements and remembers the loads it has seen fail, and in two of its
+three runs it had left that node before the slowdown. The practical
 lesson is
 that the latency term in placement must see load, and that its shape is
 better measured than assumed.
@@ -656,7 +679,14 @@ hostile mobs are disabled; real players and real mob AI add load of other
 shapes. The placement comparison covers four scenarios on four nodes; larger
 problems are where the load-aware models could differ.
 
-\textbf{Future work.} more replicates on dedicated
+\emph{Live runs.} Three runs per controller on one schedule; the ranges are
+wide (the load-blind controller's median spans 76\,ms to 4.5\,s), so they
+show direction, not effect sizes. The live correction was not run on the
+standard schedule, and its capacity-drop runs are confounded by its own
+earlier moves. A move is a reconnect, not a state handover.
+
+\textbf{Future work.} A live correction that ignores windows in which
+players are still joining; more replicates on dedicated
 hardware, nodes pushed past their knees at higher core counts, larger
 placement problems, state handover instead of reconnection, and network
 impairments that make the bandwidth term
