@@ -35,7 +35,11 @@ placement leaves its worst players at 18--30\,s from 80 players on; both
 load-aware placements stay at 20--39\,ms. The learned model predicts latency
 best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
 held-out third replicate) but, on these scenarios, does not place better than
-the fitted closed form.
+the fitted closed form. Run as a live controller on the same schedule of
+players, the load-blind model never moves a match and its worst players sit
+at a median of 1.06\,s; the learned model keeps them at 33\,ms. When one node
+silently loses half its CPU, only a variant that corrects itself from live
+measurements moves players off it.
 \end{abstract}
 
 \section{Introduction}
@@ -67,11 +71,14 @@ This paper measures that error instead of modelling it. Our contributions:
   \item an emulated edge--cloud testbed running a real game server binary and
         protocol-level clients, with latency measured at four depths at once,
         so delay is attributed to a layer rather than inferred;
-  \item a labelled dataset mapping (node, load) to measured tail latency, two
-        replicates, released with the code;
+  \item a labelled dataset mapping (node, load) to measured tail latency,
+        three replicates (one held out for testing), released with the code;
   \item an end-to-end comparison in which each latency model's optimal
         placement is deployed and measured, so models are graded by a clock
-        rather than by each other.
+        rather than by each other;
+  \item a live placement controller on the same testbed, run under each
+        model on the same schedule of players, including a node that loses
+        half its CPU mid-run without any model being told.
 \end{itemize}
 
 \section{Related Work}
@@ -262,6 +269,78 @@ closed form reaches almost the same placement.
 \label{fig:deploy}
 \end{figure}
 
+\section{Closed-Loop Placement on the Testbed}
+
+The deployments above are static: one placement, measured once. We also ran
+placement as a controller on the live testbed. Every 2\,s it reads every
+bot's latency samples and every server's player count, tick time and CPU;
+every 10\,s it may move one match (ten players) to the node that lowers the
+predicted worst-player p95 by at least 10\,ms and 20\%, with a 60\,s
+cooldown per match. A move stops the match on one server and starts it on
+another, so its players reconnect. New matches land on the nearest node with
+room, as a distance-based matchmaker would place them, so two runs differ only
+in the model that drives the controller.
+
+\textbf{Same schedule, two controllers.} A match of ten players arrives
+every 25\,s up to 140 players, holds for 150\,s, and leaves until 60 remain
+(13\,min). Table~\ref{tab:live} and Fig.~\ref{fig:live}. The analytical
+controller never moves a match: edge1 fills to 100 players and its p95 stays
+above 10\,s until departures empty it. The learned controller keeps the
+worst player's p95 at a median of 33\,ms; its remaining excursions over
+100\,ms are the 10--25\,s after each new match lands on edge1 and before it
+is moved away. Scored on the analytical run's own 10\,s windows, the models'
+predictions of whether a node breaks 100\,ms reach F1 0.00 (analytical),
+0.87 (queueing and learned) and 0.95 for a variant of the learned model that
+corrects itself from live measurements.
+
+\begin{table}[t]
+\centering
+\caption{Live controller, same 13-minute schedule (worst node's p95)}
+\label{tab:live}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrr}
+\toprule
+controller & median & max & over 100\,ms & moves \\
+\midrule
+analytical & 1\,058\,ms & 19.6\,s & 53\% & 0 \\
+learned    & 33\,ms     & 817\,ms & 18\% & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig6_live_ab.png}
+\caption{Worst node's p95 over time under each controller, same arrivals and
+departures (bottom). Ticks mark the learned controller's migrations.}
+\label{fig:live}
+\end{figure}
+
+\textbf{A node gets slower and no model is told.} With eight matches
+settled, edge1's CPU quota is cut from 0.5 to 0.25 cores at 220\,s
+(Fig.~\ref{fig:drop}). The offline learned model still predicts edge1's
+0.5-core curve: it keeps 40 players there and edge1's p95 stays at
+0.2--2.6\,s for the remaining five minutes (99\% of the time over 100\,ms).
+A variant corrects the model while it runs: each steady 10\,s window updates a
+per-node factor $c$ such that the node at $P$ players behaves like the grid's
+node at $cP$. Its first version noticed the cut and moved two matches off
+within 70\,s, but light, healthy windows below the new knee pulled $c$ back
+down and it moved a match back, which then saw 3.9\,s. With a five-minute
+memory of loads measured over budget, a rerun was over 100\,ms for 4\% of
+the time after the cut (the 15--20\,s before its first move) and never
+reloaded edge1. The memory was added after the first run and each version ran
+once; it shows the mechanism, not a tuned result.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig7_live_capacity_drop.png}
+\caption{edge1's CPU halved at 220\,s (dotted). Top: edge1's p95 under the
+offline and the live-corrected learned model. Middle: players each leaves on
+edge1. Bottom: the live model's cost factor for edge1 (true value after the
+cut: 2).}
+\label{fig:drop}
+\end{figure}
+
 \section{Threats to Validity}
 
 \textbf{One host, three replicates.} All nodes share one laptop; three replicates
@@ -295,11 +374,16 @@ node's saturation point, and above it the error is not a few milliseconds but
 seconds: deployed, its placements left the worst players waiting 18--30\,s
 where a load-aware placement measured 20--39\,ms on the same hardware. A model
 learned from measurements predicts latency best, while on these scenarios a
-fitted M/M/1 term already makes the right placement. The practical lesson is
+fitted M/M/1 term already makes the right placement. Run live on the same
+schedule, a load-blind controller never moves a match while a load-aware one
+keeps the worst players near 33\,ms, and a node that silently slows down is
+caught only by a model that keeps learning from measurements. The practical
+lesson is
 that the latency term in placement must see load, and that its shape is
 better measured than assumed. Future work: more replicates on dedicated
 hardware, nodes pushed past their knees at higher core counts, larger
-placement problems, and network impairments that make the bandwidth term
+placement problems, state handover instead of reconnection, and network
+impairments that make the bandwidth term
 non-trivial. Code, raw measurements and the dataset:
 \url{https://github.com/ankamteja/latency-aware-edge-game-placement}.
 

@@ -37,6 +37,18 @@ and log in to the other, the same cost a real session move has. The
 controller measures it: the reconnect time of a move is from the stop until
 the last of the ten players sends its first latency sample on the new node.
 
+**The controller's model** is one of four, chosen per run:
+
+| policy | what it predicts a node's p95 from |
+|---|---|
+| `analytical` | distance only: the load-blind formula of chapter 8 |
+| `queueing` | the fitted M/M/1 form: distance + s / (1 - u) |
+| `learned` | the gradient-boosted trees fitted on `grid1` and `grid2` |
+| `learned-live` | `learned`, corrected while it runs: each steady 10 s window is compared with the prediction and updates a per-node cost factor c (the node at P players behaves like the grid's node at c x P), and a window measured over 100 ms is remembered for 5 minutes as a floor for that node at that load or more |
+
+All four are evaluated in the background on every run (*every model in
+shadow*), whichever one is in control.
+
 ## 9.2 One tick, every 2 seconds
 
 1. **Demand.** Apply the scenario: matches arrive and leave on a fixed
@@ -178,6 +190,48 @@ In the learned run only 7 of 137 windows break 100 ms, all of them arrival
 transients no model can see coming from players and cores alone; every
 model's F1 there is 0 to 0.25 and is not a meaningful comparison.
 
+### A node gets slower and no model is told
+
+`capacity-drop`: 8 matches arrive on the nearest node and stay; at 220 s
+edge1's CPU quota is cut from 0.5 to 0.25 cores (`docker update`, the same
+change a noisy neighbour or a smaller VM makes) and nothing tells any model.
+9 minutes per run. Three runs, in order:
+
+| controller | worst p95, median | time over 100 ms, whole run | after the cut: worst p95 median / time over 100 ms / max | edge1 players after the cut | moves |
+|---|---|---|---|---|---|
+| learned (offline) | 528 ms | 74% | 670 ms / 99% / 2.6 s | 40 | 4, all before the cut |
+| learned, corrected live, first version | 31 ms | 20% | 30 ms / 21% / 4.1 s | 40, then 30, 20, back to 30 | 9 |
+| learned, corrected live, with violation memory | **24 ms** | **2.2%** | **24 ms / 4% / 222 ms** | 30, then 20 | 8 |
+
+![edge1 under the CPU cut](../figures/fig7_live_capacity_drop.png)
+
+- **The offline learned model does not notice.** Its curve for edge1 is the
+  one measured at 0.5 cores, so 40 players still look like 14 ms; for the
+  last five minutes edge1's p95 sits between 0.2 and 2.6 s and the
+  controller never acts.
+- **The first live-corrected version noticed, then forgot.** Its cost factor
+  rose to 1.65 within 80 s of the cut and it moved two matches off. With
+  edge1 down to 20 players, the windows looked healthy (7-9 ms: 20 players
+  on a quarter core are still below the new knee), the factor decayed back
+  to 0.9, and at 440 s the controller moved a match back. That match saw
+  3.9 s for about 20 s before the factor rose again. One scale factor cannot
+  hold what it learned at the knee once the load is below it.
+- **The fix, and its cost.** A window measured over 100 ms is now
+  remembered: for 5 minutes the live model predicts at least that latency
+  for that node at that load or more (`LivePolicy.broke`, tested in
+  `tests/test_live.py`). Windows in which no cost factor can change the
+  prediction by 1.5x no longer move the factor. The rerun spent 4% of the
+  time after the cut over budget, all of it the 15-20 s between the cut and
+  the first move, and never put edge1 back above 20 players. The memory
+  also picks up the brief spikes of matches arriving, so this version keeps
+  edge1 at 20 players for most of the run, before the cut too: its worst
+  player sits on edge2 or edge3 at 20-33 ms where the offline model would
+  have edge1 at 40 and 14 ms. It trades a little distance for not
+  re-entering a load that was measured to fail.
+- **Read with care.** The fix was designed after seeing the first run, and
+  each version ran once. The rerun shows the mechanism works on this
+  scenario; it is not a tuned or cross-validated result.
+
 
 ## 9.7 Limits
 
@@ -188,9 +242,10 @@ model's F1 there is 0 to 0.25 and is not a meaningful comparison.
   than that drains slowly; the rate is a choice, recorded in `meta.json`.
 - `learned` is fitted offline on the grid and never updated during a run.
   `learned-live` corrects it from measured windows, but only through one
-  number per node (how much more each player costs) bounded to 0.5-4x; a
-  change that alters the curve's shape rather than its scale is fitted only
-  approximately. Neither sees tick time or CPU directly.
+  number per node (how much more each player costs) bounded to 0.5-4x, plus
+  a 5-minute memory of loads measured over budget; a change that alters the
+  curve's shape rather than its scale is fitted only approximately (9.6).
+  Neither sees tick time or CPU directly.
 - The models were fitted with the host in Performance power mode. Run the live
   system in the same mode (`topology/verify.sh` checks it); in Balanced mode
   every node is 2-3x slower than every offline model believes (08 §8.6).
