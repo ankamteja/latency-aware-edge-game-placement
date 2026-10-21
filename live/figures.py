@@ -10,8 +10,9 @@
                                 live-corrected model's estimate of how much
                                 more each player costs edge1
 
-Each figure uses the newest finished run of each controller for that scenario
-in results/live/; pass --runs to pick others.
+Each figure uses the typical run of each controller for that scenario (the
+one with the median worst-player p95 over its runs); pass --ab or --drop to
+pick others.
 """
 import argparse
 import json
@@ -41,18 +42,29 @@ def load(run_dir):
     return {"dir": d, "meta": meta, "tl": tl, "mig": mig, "summary": summ}
 
 
-def newest(scenario, policies):
-    """The newest finished run of each policy for a scenario."""
-    out = {}
-    for d in sorted(RESULTS.iterdir(), reverse=True):
+def representative(scenario, policies):
+    """For each policy, the finished run whose worst-player median is the
+    median of its runs: the typical run, not the luckiest or the newest.
+    learned-live runs from before the violation memory are left out."""
+    from live.summarize import MEMORY_FROM
+    by = {}
+    for d in sorted(RESULTS.iterdir()):
         if not (d / "summary.json").exists() or not (d / "meta.json").exists():
             continue
         r = load(d)
         p = r["meta"]["policy"]
-        if r["meta"]["scenario"] == scenario and p in policies and p not in out \
-                and r["summary"].get("status") == "finished":
-            out[p] = r
-    return [out[p] for p in policies if p in out]
+        if r["meta"]["scenario"] != scenario or p not in policies \
+                or r["summary"].get("status") != "finished":
+            continue
+        if p == "learned-live" and d.name < MEMORY_FROM:
+            continue
+        by.setdefault(p, []).append(r)
+    out = []
+    for p in policies:
+        if p in by:
+            runs = sorted(by[p], key=lambda r: r["summary"]["worst_p95_median_ms"])
+            out.append(runs[(len(runs) - 1) // 2])
+    return out
 
 
 def fig_ab(runs, path):
@@ -118,12 +130,12 @@ def fig_drop(runs, path):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--ab", nargs="*", help="run dirs for fig6 (default: newest standard runs)")
-    ap.add_argument("--drop", nargs="*", help="run dirs for fig7 (default: newest capacity-drop runs)")
+    ap.add_argument("--ab", nargs="*", help="run dirs for fig6 (default: the typical run per controller)")
+    ap.add_argument("--drop", nargs="*", help="run dirs for fig7 (default: the typical run per controller)")
     a = ap.parse_args()
-    ab = [load(d) for d in a.ab] if a.ab else newest("standard", ["analytical", "queueing", "learned"])
-    drop = [load(d) for d in a.drop] if a.drop else newest("capacity-drop",
-                                                          ["queueing", "learned", "learned-live"])
+    ab = [load(d) for d in a.ab] if a.ab else representative("standard", ["analytical", "queueing", "learned"])
+    drop = [load(d) for d in a.drop] if a.drop else representative("capacity-drop",
+                                                                  ["queueing", "learned", "learned-live"])
     if ab:
         fig_ab(ab, FIG / "fig6_live_ab.png")
         print("wrote", FIG / "fig6_live_ab.png", [r["dir"].name for r in ab])
