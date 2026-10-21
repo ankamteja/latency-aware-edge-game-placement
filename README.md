@@ -160,7 +160,9 @@ live/run.sh                           # live dashboard on http://127.0.0.1:8090
 python3 -m pytest -q                  # 27 tests
 ```
 
-The full chain, including the deployed placements, is in
+`./rebuild.sh` rebuilds every derived file (dataset, scores, intervals,
+figures, the report and guide PDFs) from the raw measurements in one go, with
+no testbed needed. The full chain, including the deployed placements, is in
 [docs/08 §8.7](docs/08-results.md); the live runs in
 [docs/09 §9.5](docs/09-live.md).
 
