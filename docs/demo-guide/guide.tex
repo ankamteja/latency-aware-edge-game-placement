@@ -155,60 +155,81 @@ prediction and the migrations marked; the event log; players per node over
 time; and a table scoring every model in the background on this run's own
 measurements (median error, F1 at 50 and 100 ms).
 
-\section{Demo 1: the standard formula leaves players on a crowded node (3 minutes)}
+\section{The fastest way: the guided script}
 
 \begin{term}
-live/load.sh start analytical     # a terminal-driven session, formula in control
-live/load.sh add edge1 60         # 60 real bots straight onto the 0.5-core edge
+live/demo.sh            # our model, then the formula, about 12 minutes
+live/demo.sh ours       # only our model
+live/demo.sh formula    # only the formula
+\end{term}
+
+Each step prints the command, waits for \cmd{Enter}, runs it, and shows the
+live table for a minute with one line on what to point at. Keep the
+dashboard visible next to the terminal. The sections below are the same
+steps typed by hand, with what to say.
+
+\section{Demo 1: the formula puts everyone on the nearest node (3 minutes)}
+
+\begin{term}
+live/load.sh start analytical     # a session with the formula in control
+live/load.sh join 70              # 70 players arrive, one match every 5 s
 live/load.sh status               # the twin, as a table
 \end{term}
 
-What happens: within one tick edge1 shows 60 players; within seconds its p95
-climbs into the seconds and its card turns red. The formula column still says
-about 5 ms, because the formula has no load term, so the controller sees no
-reason to move anyone. Measured this morning: \textbf{60 players held on edge1,
-p95 9.3 s after 95 s, predicted 5 ms, zero migrations}.
+What happens: each arriving match is placed by the formula. It predicts
+about 5 ms for edge1 at any load, so every match goes to edge1. The event log
+shows each decision with every node's prediction (``placed on edge1 by the
+analytical model, predicted 5 ms; other nodes: edge2 15, edge3 30, cloud
+40 ms''). Within a minute edge1's p95 is in the seconds and its card is red,
+and the formula never moves anyone. Tested on 2026-10-21: \textbf{all 70
+players on edge1, predicted 5 ms, measured 12.8 s}.
 
 \begin{sayit}
 ``This is the standard model. It predicts 5 milliseconds because edge1 is
-5 milliseconds away. The players on it are waiting over 9 seconds. It will
-never move them: from its point of view edge1 is still the best node.''
+5 milliseconds away. The players on it are waiting over 12 seconds, and it
+will never move them: from its point of view edge1 is still the best node.''
 \end{sayit}
 
 \begin{term}
 live/load.sh stop
 \end{term}
 
-\section{Demo 2: the load-aware controller recovers (4 minutes)}
+\section{Demo 2: our model places players and keeps them moving (5 minutes)}
 
 \begin{term}
 live/load.sh start learned-live   # our model, corrected from live measurements
-live/load.sh add edge1 60
+live/load.sh join 40              # players arrive; the model picks each node
+live/load.sh join 30              # more players
+live/load.sh add edge1 30         # a flash crowd forced onto edge1
 \end{term}
 
 \begin{center}
 \includegraphics[width=0.92\linewidth]{img/twin-overload.jpg}
 \end{center}
 
-What happens: the same overload, but every 10 seconds the controller moves
-one match to wherever the predicted worst latency drops most. You see dots
-travel from edge1 to edge2 (and edge3), the event log names each move, and
-edge1's p95 falls back. Measured this morning: four moves in the first
-60 s (edge1 to edge2 at 8, 25 and 40 s, to edge3 at 59 s), the worst node back
-under 50 ms by about 70 s and steady near 32 ms after that, then one match
-drifting back to edge1 once it was safe.
+What happens: for each arriving match the model predicts every node's p95
+and picks the lowest worst case. The first matches go to edge1, the closest
+node, while it is predicted fast (7, 8, 10, 14 ms). Once edge1 is predicted
+past its knee, new matches go to edge2 and edge3. Then \cmd{add edge1 30}
+forces three matches onto edge1, the way a distance-only matchmaker would;
+every 10 s the controller moves one off, shown as a dot travelling along the
+links. Tested on 2026-10-21: four matches to edge1, the next three to edge2,
+and the forced crowd moved to edge3 within 36 s, leaving every node at
+11 to 34 ms. 40 players is edge1's knee: while 40 players log in at once,
+edge1 can briefly tip over, and the live model then raises its estimate for
+edge1 and moves a match off. Point at that if it happens.
 
 \begin{sayit}
-``Same players, same servers. This controller knows a crowded edge is slow,
-because its model was learned from measurements of these servers. It moves
-one match at a time, so ten players reconnect each time; you can see each
-move in the event log with its predicted gain.''
+``Same players, same servers. This model learned from measurements that a
+crowded edge is slow, so it places the next players elsewhere before the
+edge breaks. When a crowd is forced onto it anyway, it moves one match at a
+time; you can see each move and its predicted gain in the event log.''
 \end{sayit}
 
 \section{Demo 3: a node gets slower and nobody is told (3 minutes)}
 
-Leave Demo 2 running with about 30 players on edge1, then halve edge1's CPU
-from the terminal. No model is told.
+Leave Demo 2 running, then halve edge1's CPU from the terminal. No model is
+told.
 
 \begin{term}
 live/load.sh throttle edge1 0.25  # edge1 now has a quarter core instead of half
@@ -218,9 +239,8 @@ live/load.sh status
 What happens: edge1's p95 jumps; the learned model's offline curve still
 predicts a healthy node, but the live-corrected model compares each 10 s window
 with its prediction and estimates how much more each player now costs edge1.
-In this morning's manual run its estimate rose from 1.1 to about 2.0 within a
-minute (the true factor is 2: half the CPU), it moved one match off, and edge1
-settled at 14 to 26 ms with 20 players. The twin then shows the cut on edge1's
+Tested on 2026-10-21: after the cut it moved a match off edge1 within 25 s,
+and edge1 held 20 players at 34 ms. The twin then shows the cut on edge1's
 card in red:
 
 \begin{center}
@@ -333,8 +353,10 @@ A node still throttled after a crash & The next run restores it at start; \cmd{t
 \begin{term}
 topology/verify.sh                 # ALL CHECKS PASSED
 live/run.sh                        # dashboard on http://127.0.0.1:8090
+live/demo.sh                       # the whole demo, one step per Enter
 live/load.sh start analytical      # or learned, queueing, learned-live
-live/load.sh add edge1 60          # bots in matches of 10
+live/load.sh join 40               # players arrive; the model places each match
+live/load.sh add edge1 60          # bots forced onto one node, matches of 10
 live/load.sh status
 live/load.sh throttle edge1 0.25   # node gets slower, no model told
 live/load.sh restore edge1
