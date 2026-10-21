@@ -15,6 +15,7 @@ Read the limits in §8.6 before quoting anything.
 |---|---|---|---|
 | `grid1` | every node swept on its own load ladder, edge1 → cloud | 25 | 2026-10-20 23:43 – 2026-10-21 00:48, edge1 re-run 02:30 – 02:47 |
 | `grid2` | the same ladder, nodes in reverse order | 25 | 2026-10-21 00:48 – 01:54 |
+| `grid3` | a third replicate, edge1 → cloud, held out from every fit | 25 | 2026-10-21 09:16 – 10:22 |
 | `place1` | each model's optimal placement deployed for real, all nodes loaded at once | 14 placements, 31 node-cells | 2026-10-21 01:54 – 02:28, 02:47 – 02:53 |
 
 Ladders: edge1 at 1, 10, 20, 30, 40, 50, 60 players; edge2, edge3 and cloud at
@@ -40,7 +41,8 @@ Discarded, and kept only as evidence of the artefact that spoiled them:
 | `grid-a` | one bot process for all bots: the client's event loop was measured (§6.16) |
 
 The dataset (`data/dataset.csv`, `data/cells.csv`) is built from `grid1`,
-`grid2` and `place1` only: 81 cells, 243 rows of 30 s windows.
+`grid2`, `grid3` and `place1` only: 106 cells, 318 rows of 30 s windows. Every
+model is fitted on `grid1` and `grid2`; `grid3` is used only as a test set.
 
 ---
 
@@ -123,7 +125,7 @@ Three models, one interface: `predict(node, players) -> p95 ms`
 - **learned**: RTT + server delay predicted by gradient-boosted trees on
   (utilization, players, cores). No assumed shape.
 
-`results/model/summary.md`, two tests:
+`results/model/summary.md`, three tests:
 
 **Cross-replicate** - fit on one grid replicate, predict the other, all 50
 cells:
@@ -150,6 +152,24 @@ model has never seen (median abs error / typical factor off):
 
 The learned model transfers to an unseen node size best on three of four
 nodes; on edge2 the closed form transfers better.
+
+**Held-out replicate** - fit on `grid1` and `grid2`, predict `grid3`, a third
+replicate measured hours later on a restarted testbed and never used in any
+fit (25 cells; `results/model/held_out.csv`):
+
+| model | median abs error | typical factor off | MAE | R² (log10) | Spearman ρ | F1, p95 > 50 ms | F1, p95 > 100 ms |
+|---|---|---|---|---|---|---|---|
+| analytical | 6.9 ms | 2.92x | 1 325 ms | -0.50 | 0.45 | 0.00 | 0.00 |
+| queueing | 2.3 ms | 1.60x | 5 887 ms | 0.64 | 0.95 | 0.67 | **1.00** |
+| learned | **1.2 ms** | **1.20x** | **723 ms** | **0.94** | **0.98** | **0.92** | 0.80 |
+
+The same pattern as cross-replicate, on data no model has seen: the learned
+model is the most accurate everywhere and catches all six cells that break
+50 ms (one false alarm); the queueing model catches only half of them but
+gets the three 100 ms violations exactly. With 6 and 3 positive cells these
+F1 scores move by 0.1-0.3 per cell. `grid3` also reproduces the knees: edge1
+between 40 (15 ms) and 50 players (409 ms), edge2 between 80 (44 ms) and 100
+(25.8 s), edge3 and cloud none up to 100.
 
 **Every standard score.** The models are regressors, so accuracy and F1 only
 exist once the prediction is turned into a decision. The decision placement
@@ -250,8 +270,8 @@ learned model's answer on clean data, so they are not in the table above.
 
 ## 8.6 Limits - quote these with the results
 
-- **One host, two replicates.** Every node is a container on one laptop. Two
-  replicates give a spread, not a confidence interval. At the knees (edge1 at
+- **One host, three replicates.** Every node is a container on one laptop.
+  Three replicates give a spread, not a confidence interval. At the knees (edge1 at
   50, edge2 at 80) the replicates disagree by 6-80x, so the exact player count
   of a knee is not established; that a knee exists, and roughly where, is.
 - **The host's power mode sets the servers' capacity.** A node capped at
@@ -292,15 +312,18 @@ learned model's answer on clean data, so they are not in the table above.
 cd topology && ./up.sh                      # ends with ALL CHECKS PASSED
 cd ../controller
 ./grid.sh grid1 && ./grid.sh grid2 reverse  # ~2 h, keep the host idle
+./grid.sh grid3                             # held-out replicate, ~1 h
 cd ..
 python3 dataset/build_dataset.py --tags grid1,grid2
 python3 -m placement.experiment plan --players 40,80,120,160
 controller/deploy_plan.sh place1            # ~40 min
-python3 dataset/build_dataset.py --tags grid1,grid2,place1
+python3 dataset/build_dataset.py --tags grid1,grid2,grid3,place1
 python3 -m placement.experiment score --tag place1
 python3 -m model.evaluate                   # results/model/
+python3 -m model.metrics                    # results/model/metrics.md
 python3 -m model.figures                    # figures/
 ```
 
-Keep the host idle while the grids run (§8.6) - close browsers, do not
+Set the laptop's power mode to Performance and keep the host idle while the
+grids run (§8.6) - close browsers, do not
 compile, do not watch video.

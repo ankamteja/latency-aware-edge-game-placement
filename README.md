@@ -146,7 +146,8 @@ every command explained in [docs/03-commands.md](docs/03-commands.md).
 
 Full analysis, numbers and limits: [docs/08-results.md](docs/08-results.md).
 Four nodes (0.5 / 1 / 2 / 4 cores at 5 / 15 / 30 / 40 ms), two replicates of
-the load grid, then each latency model's optimal placement deployed for real.
+the load grid to fit on and a third held out to test on, then each latency
+model's optimal placement deployed for real.
 
 **The load-blind placement fails, by orders of magnitude.** Each model chose
 how to split a batch of players across the four nodes; every choice was then
@@ -171,9 +172,9 @@ and 100. The tail leaves the flat region while mean tick time is still an
 eighth of its budget.
 
 **The learned model is the better predictor** (cross-replicate median error
-0.9 ms vs 1.8 ms queueing and 5.8 ms analytical), but on these four scenarios
-it does not *place* better than a correctly fitted closed form. One host, two
-replicates, capacities chosen rather than discovered - see
+0.9 ms vs 1.8 ms queueing and 5.8 ms analytical; on the held-out third
+replicate 1.2 / 2.3 / 6.9 ms), but on these four scenarios it does not *place*
+better than a correctly fitted closed form. One host, three replicates, capacities chosen rather than discovered - see
 [§8.6](docs/08-results.md#86-limits---quote-these-with-the-results).
 
 ![measured p95 per node vs the load-blind model](figures/fig1_p95_vs_players.png)
@@ -276,6 +277,7 @@ the artefact and its fix in
 - [x] Four-candidate testbed with a capacity ladder (0.5 / 1 / 2 / 4 cores)
 - [x] Per-node capacity measured, so load can be expressed as utilization
 - [x] Warm re-run of the placement grid, two replicates, time of day frozen
+- [x] Third replicate held out from every fit, scored with every model
 - [x] Labelled dataset (`data/dataset.csv`, `data/cells.csv`)
 - [x] Latency predictor trained on measured data, compared against the
       analytical and M/M/1 models on prediction and on node ranking

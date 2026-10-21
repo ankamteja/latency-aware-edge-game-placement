@@ -33,8 +33,9 @@ two replicates of the load grid, compute each model's optimal placement for
 40 to 160 players, and deploy every placement for real. The load-blind
 placement leaves its worst players at 18--30\,s from 80 players on; both
 load-aware placements stay at 20--39\,ms. The learned model predicts latency
-best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms) but, on these
-scenarios, does not place better than the fitted closed form.
+best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
+held-out third replicate) but, on these scenarios, does not place better than
+the fitted closed form.
 \end{abstract}
 
 \section{Introduction}
@@ -195,6 +196,11 @@ The learned model is the most accurate; the queueing model is accurate in the
 flat region but its $1/(1-u)$ term explodes near the knee, giving a large mean
 error. Fitted on three nodes and tested on the fourth, the learned model
 transfers best to edge1, edge3 and cloud, and the queueing model to edge2.
+On a third replicate measured hours later and never used in any fit (25
+cells), the ranking holds: median error 1.2\,ms learned, 2.3\,ms queueing,
+6.9\,ms analytical. Asked whether a cell breaks a 50\,ms budget, the learned
+model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
+the analytical model 0, since it never predicts a violation.
 
 \begin{table}[t]
 \centering
@@ -258,15 +264,18 @@ closed form reaches almost the same placement.
 
 \section{Threats to Validity}
 
-\textbf{One host, two replicates.} All nodes share one laptop; two replicates
+\textbf{One host, three replicates.} All nodes share one laptop; three replicates
 give a spread, not a confidence interval. At the knees the replicates differ
 by 6--80$\times$, so the exact player count of a knee is not established.
 
-\textbf{Host contention.} CPU sets separate the containers from each other,
-not from the host's own processes. A first pass of edge1 measured while the
-host was in interactive use cost 2.4$\times$ the CPU per player and moved
-edge1's knee from 50--60 to 20--30 players; re-measured on an idle host, it
-matched the other replicate. That run is excluded and kept as evidence.
+\textbf{Host power mode.} A node capped at half a core runs in short
+bursts, so the CPU governor keeps its clock low unless the host is in its
+performance power mode. All clean runs used that mode. In the balanced mode
+the same players cost 2--3$\times$ the CPU (edge1 with 20 players: 42\% of a
+core instead of 14--18\%) and edge1's knee fell below 20 players. One edge1
+pass and one full replicate were spoiled this way; they are excluded and kept
+as evidence. The same node, players and network, changed only by a setting no
+latency formula sees, moved the knee threefold.
 
 \textbf{Chosen, not discovered, capacities.} The core counts and delays were
 picked to create the trade-off. The claim is that an inversion exists, is

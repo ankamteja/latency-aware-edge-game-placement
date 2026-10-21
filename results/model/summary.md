@@ -10,6 +10,14 @@ Queueing model fitted service term s = 2.40 ms (capacity 100 players/core).
 | queueing | 50 | 6546.6 | 1.8 | 1.85x |
 | learned | 50 | 468.7 | 0.9 | 1.28x |
 
+## Held-out replicate (fit on grid1+grid2, predict grid3)
+
+| model | cells | MAE (ms) | median abs err (ms) | typical factor off |
+|---|---|---|---|---|
+| analytical | 25 | 1325.2 | 6.9 | 2.92x |
+| queueing | 25 | 5886.9 | 2.3 | 1.6x |
+| learned | 25 | 722.7 | 1.2 | 1.2x |
+
 ## Leave one node out (median abs err ms / typical factor off)
 
 | held-out node | analytical | queueing | learned |
