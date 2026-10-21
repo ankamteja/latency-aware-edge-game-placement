@@ -88,7 +88,7 @@ set_paras(impl, "TextBox 6", "Analysis and live system", [
     "build_dataset.py: 150 cells, 450 rows of 30 s windows",
     "models.py: three models behind one predict(node, players)",
     "experiment.py: exhaustive placement search; deploy_plan.sh deploys it",
-    "live/: 2 s controller loop, browser dashboard, 27 unit tests",
+    "live/: 2 s controller loop, browser dashboard, 29 unit tests",
     "rebuild.sh: every table and figure rebuilt from the raw data",
 ])
 notes(impl, "How it is built. Everything is scripts in the repository: the "

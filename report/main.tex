@@ -301,8 +301,9 @@ live-corrected model. A FastAPI server pushes the state to a browser
 dashboard over a WebSocket, and \texttt{live/load.sh} drives a session from
 a terminal: players join where the model chooses, a crowd can be forced onto
 a node, and a node's CPU can be cut and restored. Every run writes its
-settings, a per-tick timeline, every migration and a summary. 27 unit tests
-cover the decision rules, the log parsing and the live correction. A static
+settings, a per-tick timeline, every migration and a summary. 29 unit tests
+cover the decision rules, the log parsing, the live correction and the
+run summaries. A static
 build of the dashboard replays the recorded runs from their logs and is
 hosted on GitHub Pages.
 
@@ -710,8 +711,11 @@ show direction, not effect sizes. The live-corrected runs on the standard
 schedule were made last, about 90\,min after the others, and its
 capacity-drop runs are confounded by its own earlier moves. A move is a reconnect, not a state handover.
 
-\textbf{Future work.} Natural next steps are a live correction that ignores windows in which
-players are still joining, more replicates on dedicated
+\textbf{Future work.} The live correction now learns only from windows
+30\,s after a node's load last changed; it was added after the runs above,
+and its first runs were made on a host that had slowed down (a browser
+running, memory swapping) and are excluded, so it is not yet evaluated.
+Natural next steps are evaluating it, more replicates on dedicated
 hardware, nodes pushed past their knees at higher core counts, larger
 placement problems, state handover instead of reconnection, and network
 impairments that make the bandwidth term

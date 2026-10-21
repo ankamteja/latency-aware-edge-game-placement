@@ -163,7 +163,7 @@ cd controller && ./warmup.sh          # generate terrain once, discard
 cd .. && python3 dataset/build_dataset.py --tags grid1,grid2,grid3,place1
 python3 -m model.evaluate && python3 -m model.metrics && python3 -m model.uncertainty
 live/run.sh                           # live dashboard on http://127.0.0.1:8090
-python3 -m pytest -q                  # 27 tests
+python3 -m pytest -q                  # 29 tests
 ```
 
 `./rebuild.sh` rebuilds every derived file (dataset, scores, intervals,

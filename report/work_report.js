@@ -38,7 +38,7 @@ const N = {
   },
   drop: {
     offline: "99-100%",
-    liveText: "In the runs made with the final version of the live model, it noticed the cut from the measurements alone and moved players off the slowed node.",
+    liveText: "Only the version that keeps correcting itself moved players off the slowed server. To be fair about it: in two of its three runs it had already moved most players away before the cut, because it had also learned from the seconds when players were still logging in, so only one run really shows it noticing the change. We have since fixed that (it now waits 30 s after any change before learning).",
   },
 };
 
@@ -51,8 +51,8 @@ const p = (text, opts = {}) => new Paragraph({
 });
 const b = (text) => new TextRun({ text, bold: true, font: FONT, size: 23 });
 const t = (text) => new TextRun({ text, font: FONT, size: 23 });
-const h1 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 160 }, children: [new TextRun({ text, font: FONT })] });
-const h2 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 120 }, children: [new TextRun({ text, font: FONT })] });
+const h1 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_1, keepNext: true, spacing: { before: 360, after: 160 }, children: [new TextRun({ text, font: FONT })] });
+const h2 = (text) => new Paragraph({ heading: HeadingLevel.HEADING_2, keepNext: true, spacing: { before: 240, after: 120 }, children: [new TextRun({ text, font: FONT })] });
 const bullet = (runs) => new Paragraph({
   numbering: { reference: "bullets", level: 0 }, spacing: { after: 80, line: 290 },
   children: typeof runs === "string" ? [t(runs)] : runs,
@@ -71,18 +71,19 @@ function table(header, rows, widths) {
   scaled[scaled.length - 1] += W - scaled.reduce((a, x) => a + x, 0);
   const border = { style: BorderStyle.SINGLE, size: 4, color: "B7C4CF" };
   const borders = { top: border, bottom: border, left: border, right: border };
-  const cell = (text, i, head) => new TableCell({
+  const cell = (text, i, head, last) => new TableCell({
     width: { size: scaled[i], type: WidthType.DXA },
     borders,
     shading: head ? { type: ShadingType.CLEAR, color: "auto", fill: "DCEFEE" } : undefined,
     margins: { top: 60, bottom: 60, left: 100, right: 100 },
-    children: [new Paragraph({ children: [new TextRun({ text, bold: head, font: FONT, size: 21 })] })],
+    // keepNext on every row but the last keeps a table on one page
+    children: [new Paragraph({ keepNext: !last, children: [new TextRun({ text, bold: head, font: FONT, size: 21 })] })],
   });
   return new Table({
     width: { size: W, type: WidthType.DXA },
     columnWidths: scaled,
-    rows: [new TableRow({ tableHeader: true, children: header.map((x, i) => cell(x, i, true)) }),
-      ...rows.map((r) => new TableRow({ children: r.map((x, i) => cell(x, i, false)) }))],
+    rows: [new TableRow({ tableHeader: true, cantSplit: true, children: header.map((x, i) => cell(x, i, true, false)) }),
+      ...rows.map((r, k) => new TableRow({ cantSplit: true, children: r.map((x, i) => cell(x, i, false, k === rows.length - 1)) }))],
   });
 }
 function figure(file, caption, w, h) {
@@ -114,7 +115,7 @@ const body = [
   h1("Abstract"),
   p("Online games feel smooth only when the game server answers quickly. To make that happen, game servers are often placed on small \"edge\" servers close to the players. The programs that decide which server a group of players should use usually estimate the delay with a simple formula: the time a message takes to travel over the network, plus the time to send its data. That formula ignores one thing: how busy the server already is."),
   p("We built a small but real test system on one laptop, with four game servers of different sizes and distances, and filled them with automated players. We measured what the players actually experienced and compared it with what the formula and two better models predicted."),
-  p([b("Main finding. "), t(`When the nearest server gets crowded, the simple formula still calls it the best choice, and its players end up waiting 18 to 30 seconds for a reply. Models that take server load into account keep the same players at ${N.loadAware}. A model trained on our measurements predicts the delay best, and a version that keeps learning while the system runs handled a server that suddenly slowed down.`)]),
+  p([b("Main finding. "), t(`When the nearest server gets crowded, the simple formula still calls it the best choice, and its players end up waiting 18 to 30 seconds for a reply. Models that take server load into account keep the same players at ${N.loadAware}. A model trained on our measurements predicts the delay best, and a version that keeps learning while the system runs moved players off a server that suddenly slowed down.`)]),
 
   h1("1. Introduction"),
   h2("1.1 The problem in simple words"),
@@ -207,7 +208,7 @@ const body = [
   p("From 80 players on, the formula puts too many players on the nearest server and its worst players wait 18 to 30 seconds, about 500 to 1500 times longer than with either load-aware model. In a simulator built on the formula, the same plan would have looked like the best one. The learned and queueing models made almost the same plans here, so in these one-time plans the learned model did not choose better, it only predicted better."),
   ...figure("fig5_deployments.png", "Figure 2. Each model's plan, deployed and measured (log scale). Bars: median of the rounds; dots: each round.", 1260, 774),
   h2("4.4 The live controller"),
-  p(`Same 13-minute schedule of players with each model in charge, ${N.live.runs} or more runs each. Worst players' delay, median over the runs (lowest to highest run):`),
+  p(`Same 13-minute schedule of players with each model in charge, three runs each. Worst players' delay, median over the runs (lowest to highest run):`),
   table(["Model in charge", "Worst players' delay", "Time over 100 ms", "Moves"], N.live.rows, [2600, 2800, 1800, 1300]),
   gap(),
   p("The formula never moves anyone, because to it a crowded server looks exactly as fast as an empty one. The queueing model moves players but overloads edge2, because it judges servers only by how full they are. The learned model avoids that, and the self-correcting version keeps the worst players lowest."),
