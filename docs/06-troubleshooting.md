@@ -625,3 +625,26 @@ of every model still uses every 10 s window, so it stays comparable with the
 earlier runs. Runs before the change are reported as their own versions
 (`live/summarize.py` `label`): "first version" (no violation memory),
 "before the settle rule", and the current one.
+
+## 6.22 A night of runs on a host that had slowed down
+
+**Symptom.** Live runs from 21:21 to 23:54 on 2026-10-21 (all four
+controllers) and the third deployment round `place3` (23:54 - 00:20) were
+worse than the same runs in the afternoon: queueing's median worst p95 0.8
+and 1.1 s instead of 72-166 ms, edge1 at 40 players backlogged at 1.1-1.8 s.
+`place3` repeats placements already measured twice, and the same
+placements cost more CPU on every node: edge1 at 40 players 42-49% against
+28-38% in `place1`, edge2 at 80 91-99% against 75-81%, edge3 at 40 36%
+against 29-30%.
+
+**Diagnosis.** `verify.sh` passed and the power mode was Performance in
+every run. `top` afterwards showed a browser running (about 65 CPU-minutes)
+and 5.2 GB of swap in use with 3.4 GB of memory available: the same
+contention as 6.20, for hours. The servers have their own cores, but the
+client that generates the load and the host's memory are shared.
+
+**Fix.** The runs are kept as evidence in `results/live-contended/` and
+`results/raw/place3-contended/` and are in no table. Clean results stay as
+they were. Measure only with the browser closed and swap use low, and
+compare a repeated cell's CPU with its earlier measurements before trusting
+a new round.

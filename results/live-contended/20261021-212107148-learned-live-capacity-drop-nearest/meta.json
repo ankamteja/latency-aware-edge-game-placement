@@ -1,0 +1,35 @@
+{
+  "run": "20261021-212107148-learned-live-capacity-drop-nearest",
+  "policy": "learned-live",
+  "scenario": "capacity-drop",
+  "arrival": "nearest",
+  "scenario_params": {
+    "peak": 8,
+    "arrive_every": 20,
+    "hold": 0,
+    "low": 8,
+    "depart_every": 0,
+    "tail": 380,
+    "seed": 7,
+    "cut": {
+      "t": 220,
+      "node": "edge1",
+      "cores": 0.25
+    }
+  },
+  "length_s": 540.0,
+  "tick_s": 2.0,
+  "window_s": 10.0,
+  "rebalance_every_s": 10.0,
+  "observe_settle_s": 30.0,
+  "gains": {
+    "worst_ms": 10.0,
+    "worst_frac": 0.2,
+    "mean_ms": 3.0,
+    "cooldown_s": 60.0
+  },
+  "capacity": 100,
+  "budget_ms": 100.0,
+  "started": "2026-10-21 21:21:07",
+  "power_mode": "throughput-performance"
+}

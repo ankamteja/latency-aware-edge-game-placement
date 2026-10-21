@@ -48,6 +48,16 @@ def at_cut(tl, cut):
     return t, (before[-1]["nodes"][node]["players"] if before else None)
 
 
+def edge1_cpu_at_40(tl, before=1e9):
+    """Median CPU of edge1 while it holds 40 players (before a capacity cut).
+    40 players is just below edge1's knee: it either keeps up (about 35-46%)
+    or is backlogged at its whole half core (49-50%). Read it next to the
+    run's latency; on its own it cannot tell a slow host from a busy node."""
+    c = [r["nodes"]["edge1"].get("cpu_pct") for r in tl
+         if r["t"] < before and r["nodes"]["edge1"]["players"] == 40 and r["nodes"]["edge1"].get("cpu_pct")]
+    return st.median(c) if c else None
+
+
 def window(tl, lo, hi):
     w = [r["worst_p95_ms"] for r in tl if lo <= r["t"] < hi and r["worst_p95_ms"]]
     if not w:
@@ -110,8 +120,8 @@ def main():
         rows.sort(key=lambda r: (label(r[0], r[3]), r[3]))
         cut = rows[0][0]["scenario_params"].get("cut")
         lines += [f"## {sc}", ""]
-        head = "| run | controller | worst p95, median | time over 100 ms | worst, max | moves | mean reconnect |"
-        sep = "|---|---|---|---|---|---|---|"
+        head = "| run | controller | worst p95, median | time over 100 ms | worst, max | moves | mean reconnect | edge1 CPU at 40 players |"
+        sep = "|---|---|---|---|---|---|---|---|"
         if cut:
             head += f" cut took effect | {cut['node']} players then | after the cut: median / over 100 ms / max |"
             sep += "---|---|---|"
@@ -120,7 +130,9 @@ def main():
             gap = summ.get("migration_gap_mean_s")
             row = (f"| {name} | {label(meta, name)} | {fmt_ms(summ['worst_p95_median_ms'])} "
                    f"| {summ['time_over_budget_share'] * 100:.0f}% | {fmt_ms(summ['worst_p95_max_ms'])} "
-                   f"| {summ['migrations']} | {f'{gap:.1f} s' if gap else '-'} |")
+                   f"| {summ['migrations']} | {f'{gap:.1f} s' if gap else '-'} ")
+            cpu = edge1_cpu_at_40(tl, at_cut(tl, cut)[0] if cut else 1e9)
+            row += f"| {f'{cpu:.0f}%' if cpu else '-'} |"
             if cut:
                 t, held = at_cut(tl, cut)
                 w = window(tl, t, 1e9)

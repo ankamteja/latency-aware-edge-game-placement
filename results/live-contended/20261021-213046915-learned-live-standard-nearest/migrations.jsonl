@@ -1,0 +1,12 @@
+{"t": 100.2, "match": 0, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 16.9, "predicted_mean_before": 64.0, "predicted_mean_after": 14.6}
+{"t": 130.2, "match": 1, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 17.7, "predicted_mean_before": 56.1, "predicted_mean_after": 15.2}
+{"t": 151.0, "match": 2, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 21.0, "predicted_mean_before": 50.8, "predicted_mean_after": 17.0}
+{"t": 181.0, "match": 3, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 20.9, "predicted_mean_before": 47.9, "predicted_mean_after": 17.4}
+{"t": 200.3, "match": 4, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 20.9, "predicted_mean_before": 44.8, "predicted_mean_after": 17.8}
+{"t": 230.2, "match": 5, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 22.8, "predicted_mean_before": 42.5, "predicted_mean_after": 19.3}
+{"t": 250.2, "match": 6, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 22.8, "predicted_mean_before": 41.5, "predicted_mean_after": 19.6}
+{"t": 280.2, "match": 7, "src": "edge1", "dst": "edge3", "predicted_worst_before": 64.0, "predicted_worst_after": 31.6, "predicted_mean_before": 40.0, "predicted_mean_after": 20.6}
+{"t": 290.3, "match": 0, "src": "edge2", "dst": "edge3", "predicted_worst_before": 371.8, "predicted_worst_after": 32.0, "predicted_mean_before": 224.2, "predicted_mean_after": 21.4}
+{"t": 300.6, "match": 8, "src": "edge1", "dst": "edge3", "predicted_worst_before": 64.0, "predicted_worst_after": 33.7, "predicted_mean_before": 40.1, "predicted_mean_after": 22.6}
+{"t": 331.3, "match": 9, "src": "edge1", "dst": "edge3", "predicted_worst_before": 64.0, "predicted_worst_after": 33.1, "predicted_mean_before": 39.8, "predicted_mean_after": 23.2}
+{"t": 391.1, "match": 10, "src": "edge1", "dst": "edge3", "predicted_worst_before": 138.1, "predicted_worst_after": 33.2, "predicted_mean_before": 58.9, "predicted_mean_after": 24.0}
