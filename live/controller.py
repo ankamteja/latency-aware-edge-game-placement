@@ -383,7 +383,9 @@ class Run:
         row = {"t": round(self.elapsed(), 1), "worst_p95_ms": worst,
                "predicted_worst_ms": round(pw, 1) if any(load.values()) else None,
                "players": sum(load.values()),
-               "nodes": {n: {"players": v["players"], "p95_ms": v["p95_ms"]} for n, v in nodes.items()}}
+               "nodes": {n: {k: v.get(k) for k in ("players", "p95_ms", "mspt_ms", "cpu_pct",
+                                                    "quota_cores", "capacity_factor")}
+                         for n, v in nodes.items()}}
         self.timeline.append(row)
         return nodes, row
 
