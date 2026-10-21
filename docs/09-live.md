@@ -207,7 +207,7 @@ Figure 6 shows each controller's median run.
   edge3. This is the "one curve is not enough" effect of 08 §8.2 deciding a
   placement. Offline, at the four deployed scenarios, the two models placed
   almost the same; here they do not.
-- **The learned controller's time over budget is edge1 at its knee.** Almost
+- **The learned controller's time over budget is edge1 just below its knee.** Almost
   every tick over 100 ms (all of them in two runs, 150 of 159 in the third)
   is edge1 holding 40 players. The grid measured 14.5 ms there; live, with
   every node loaded, edge1 at 40 is often backlogged, as in the deployed

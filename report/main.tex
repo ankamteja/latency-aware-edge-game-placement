@@ -25,9 +25,9 @@ measure it. On an emulated four-node edge--cloud testbed (0.5, 1, 2 and 4
 cores at 5, 15, 30 and 40\,ms round-trip time) running a real multiplayer
 game server and up to 160 protocol-level bot players, we record network,
 transport, server-process and in-game latency concurrently. The ICMP round
-trip never moves more than 0.3\,ms from its configured value, while the 95th-percentile in-game
+trip stays within 0.3\,ms of its configured value in every grid cell, while the 95th-percentile in-game
 latency of the smallest node rises from 15\,ms at 40 players to 6.7--8.6\,s at
-60. We fit a closed-form M/M/1 model and a gradient-boosted tree model to
+60. We fit a closed-form M/M/1 queueing model (one server, random arrivals, delay growing as $1/(1-u)$ with utilization $u$) and a gradient-boosted tree model to
 two replicates of the load grid, compute each model's optimal placement for
 40 to 160 players, and deploy every placement for real. The load-blind
 placement leaves its worst players at 18--30\,s from 80 players on; both
@@ -131,7 +131,7 @@ response time.
 action: precise, fast-paced actions are the least tolerant~\cite{claypool2006latency},
 which is why we grade on the worst player's tail. Measurements of cloud gaming
 latency found much of the population too far from cloud data centres and
-motivated serving games from closer infrastructure~\cite{choy2012brewing},
+argued for serving games from closer infrastructure~\cite{choy2012brewing},
 the setting studied here. Service migration in edge computing is often
 decided from the user's distance to the serving node~\cite{wang2019migration};
 our live controller migrates on measured and predicted server latency
@@ -166,7 +166,8 @@ candidate servers. Linux \texttt{netem} adds the network delay, split evenly
 between the two ends of each link, and each server's CPU is limited by a
 cgroup quota on cores no other container uses. Table~\ref{tab:nodes} lists the nodes; the RTT is
 measured with \texttt{ping}, not assumed. Every server runs the same Paper
-1.21.4 Minecraft server and the same pre-generated world. The trade-off is
+1.21.4 Minecraft server and the same pre-generated world, and admits at most
+100 players. The trade-off is
 deliberate: the nearest node is the weakest.
 
 \begin{table}[t]
@@ -191,8 +192,8 @@ turns, and sends one timestamped chat message per second. The chat echo gives
 an in-game round-trip time through the server's main game thread. Bots run at
 most ten per process. Every chat message is delivered to every player, so
 $N$ players produce about $N^2$ deliveries per second; with one process for
-all bots this overloaded the client, and the client's own delay was recorded
-as server latency.
+all bots, an early version overloaded the client and recorded the client's
+own delay as server latency; those runs were discarded.
 
 \subsection{Measurement ladder}
 Four latencies are measured concurrently on the same path, under the same
@@ -210,15 +211,16 @@ second in reverse node order) and a third time, hours later on a restarted
 testbed, held out for testing. Before collection the worlds are
 warmed, server heaps are prevented from swapping, and the game's day/night
 cycle, weather and hostile mobs are frozen: with the cycle running, a single
-player at night put edge1 14\,s behind, so a cell's time of day was an
+player at night put edge1's game loop 14\,s (279 ticks) behind schedule, so a cell's time of day was an
 uncontrolled load source.
 
 \subsection{Latency models}
 All three models predict p95 in-game latency for a node and a player count.
 \emph{Analytical}: (\ref{eq:analytical}) with a 100\,B message over 1\,Gb/s.
 \emph{Queueing}: RTT\,$+\,s/(1-u)$, $u$ = players\,/\,(100\,$\times$\,cores),
-with $s$ the median of delay\,$\times(1-u)$ over stable cells (2.4\,ms).
-\emph{Learned}: scikit-learn gradient-boosted trees (300 trees, depth 3,
+with $s$ the median of delay\,$\times(1-u)$ over the cells with $u<1$ (2.4\,ms);
+at $u \ge 1$ the queue is unstable and the prediction is capped at 60\,s.
+\emph{Learned}: scikit-learn (1.8) gradient-boosted trees (300 trees, depth 3,
 learning rate 0.05) on utilization, players and cores, predicting the
 logarithm of the server delay (p95 minus the network RTT), fitted on the
 first two grid replicates.
@@ -234,7 +236,8 @@ grid. No model's prediction is used to grade any model. Each placement was
 deployed once. With every node loaded at the same time the numbers differ
 from the grid's single-node cells: edge1 with 40 players measured 26\,ms
 deployed against 14.5\,ms in the grid, a difference we have not isolated
-(the client generates load for all nodes at once, and 40 is edge1's knee).
+(the client generates load for all nodes at once, and 40 players is just
+below edge1's knee).
 
 
 \subsection{Live controller}
@@ -242,7 +245,7 @@ Placement is also run as a controller on the live testbed. Every 2\,s it reads e
 bot's latency samples, and every 5\,s every server's player count, tick time
 and CPU; every 10\,s it may move one match (ten players) if the move lowers
 the predicted worst-player p95 by at least 10\,ms and at least 20\%, or
-leaves it unchanged and lowers the players' mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
+leaves the predicted worst unchanged while lowering the players' mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
 another, so its players reconnect. New matches land on the nearest node with
 room, as a distance-based matchmaker would place them, so two runs differ only
 in the model that drives the controller.
@@ -261,7 +264,8 @@ at every tick: its median, its maximum and the share of the run above
 
 \section{Implementation}
 
-\textbf{Testbed.} A containerlab topology file declares the client and the
+\textbf{Testbed.} One laptop (Intel i7-14700HX, 16\,GB, Fedora 43, Linux 7.2)
+runs everything. A containerlab (0.76) topology file declares the client and the
 four servers and their links; \texttt{tc netem} sets each link's delay and a
 cgroup \texttt{cpu.max} quota on disjoint CPU sets caps each server. Every
 server runs the itzg/minecraft-server image with Paper 1.21.4. Before any
@@ -270,14 +274,14 @@ queues, the RTT measured with \texttt{ping}, the CPU limits read back from
 the kernel, the host's power mode and the frozen game rules, and refuses to
 continue if any check fails.
 
-\textbf{Load and probes.} \texttt{bots/bot.js} (Node.js, mineflayer) runs
+\textbf{Load and probes.} \texttt{bots/bot.js} (Node.js 22, mineflayer 4.37) runs
 ten bots per process; each joins, walks, turns and sends a timestamped chat
 message every second, and logs the round trip of every echo.
 \texttt{bots/probe.js} times the TCP handshake and the server-list ping, and
 \texttt{ping} the ICMP round trip, all against the same server at the same
 time. \texttt{controller/collect.sh} runs one grid cell (settle, baseline,
-joins, steady window) and samples tick time, CPU and players over RCON every
-5\,s; \texttt{grid.sh} sweeps every node's ladder.
+joins, steady window) and samples tick time, CPU and players over RCON (the server's remote
+administration console) every 5\,s; \texttt{grid.sh} sweeps every node's ladder.
 
 \textbf{Dataset and models.} \texttt{dataset/build\_dataset.py} joins the
 raw streams of every cell into 30\,s windows (106 cells, 318 rows).
@@ -335,7 +339,7 @@ replicates) against the load-blind model's prediction (dashed).}
 Fig.~\ref{fig:layers} attributes the delay. On edge1, from 1 to 60
 players, the ICMP p95 stays at 5.1--5.3\,ms and the TCP handshake at
 5.2--5.4\,ms; the server-list status ping, answered by the server process
-outside the game loop, moves only at 60 players (16 to 30--32\,ms); the in-game
+outside the game loop, rises only at 60 players, from 16 to 30--32\,ms; the in-game
 round trip, which waits for the game thread, goes from 6\,ms to
 6.7--8.6\,s. The network term the formula models is the one term that does
 not move. The probes run from the same client container as the bots, at the
@@ -435,7 +439,8 @@ players & analytical & queueing & learned \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}.
+Table~\ref{tab:deploy} lists the deployed placements and Fig.~\ref{fig:deploy}
+plots them.
 Table~\ref{tab:sim} shows why the error survives in the literature. Graded
 the way a simulator built on (\ref{eq:analytical}) grades it, by its own
 prediction, the load-blind placement is the best of the three at every size:
@@ -448,7 +453,7 @@ players wait 18--30\,s, about 510 to 1500 times longer than under either
 load-aware placement. Both load-aware
 models keep edge1 at 40 players and spread the rest; their placements measure
 within 4\,ms of each other, and the learned model's predictions of its own
-deployments are within 12\,ms. On these scenarios the learned model's
+deployments are within 12\,ms of what was measured. On these scenarios the learned model's
 advantage is in prediction, not in the placement decision: a correctly fitted
 closed form reaches almost the same placement.
 
@@ -480,9 +485,10 @@ players & simulated & measured & predicted & measured \\
 
 \subsection{Live controller}
 
-\textbf{Same schedule, three controllers.} A match of ten players arrives
-every 25\,s up to 140 players, holds for 150\,s, and leaves until 60 remain
-(13\,min). Each controller ran three times; Table~\ref{tab:live} gives the
+\textbf{Same schedule, three controllers.} One match of ten players arrives
+every 25\,s until 140 players are in; after 150\,s matches leave, one every
+25\,s, until 60 players remain
+(13\,min), the same for every run. Each controller ran three times; Table~\ref{tab:live} gives the
 median and range over the runs and Fig.~\ref{fig:live} each controller's
 median run. The analytical
 controller never moves a match, by construction: its prediction for a node
@@ -499,7 +505,7 @@ runs the queueing controller loaded edge2 to 80, and edge2's p95 stayed above
 1\,s for 14 to 174\,s, peaking at 1.7--4.9\,s. The learned model predicts
 65\,ms there, stops edge2 at 70 in every run and uses edge3: the effect of
 Fig.~\ref{fig:util} deciding a placement. Almost all of the learned
-controller's time over 100\,ms is edge1 holding 40 players, its knee: the
+controller's time over 100\,ms is edge1 holding 40 players, just below its knee: the
 grid measured 14.5\,ms there, but live, with every node loaded, edge1 at 40
 was often backlogged, as in the deployed placements (26\,ms). Each move costs
 its ten players a reconnect: about 6\,s from the stop until the last of them
@@ -510,7 +516,8 @@ afterwards, three times: it distrusts edge1 at 40 players, moves more
 8\% [5, 11] of the time, with only 0.8--1.0\% of all samples over budget.
 The caution that confounds its capacity-drop runs is what helps it here.
 
-Every model is also scored in the background on each run. A \emph{window} is
+Every model, including the live-corrected variant described below, is also
+scored in the background on each run. A \emph{window} is
 10\,s of unchanged load on one node, so a run yields one window per busy
 node every 10\,s; each is graded against every model's prediction for it,
 made before the window was seen. Table~\ref{tab:shadow} gives F1 for ``this
@@ -639,7 +646,7 @@ per-player cost grows with the number of players; the learned model's more
 accurate curve kept it off in all three. Accuracy matters most where a budget has to be checked near a knee,
 not where nodes are only ranked. The
 live runs add a requirement no offline model meets: capacity is not a
-constant. A setting on the host cut it roughly threefold in our own rig (Section~\ref{sec:threats}), and
+constant. A setting on the host cut it roughly threefold in our own rig (Limitations, Section~\ref{sec:threats}), and
 in our runs a CPU cut no model was told about was handled only by a
 controller that kept comparing its predictions with what it measured. That
 controller also needs to know which measurements to trust: learning from the
@@ -694,8 +701,8 @@ show direction, not effect sizes. The live-corrected runs on the standard
 schedule were made last, about 90\,min after the others, and its
 capacity-drop runs are confounded by its own earlier moves. A move is a reconnect, not a state handover.
 
-\textbf{Future work.} A live correction that ignores windows in which
-players are still joining; more replicates on dedicated
+\textbf{Future work.} Natural next steps are a live correction that ignores windows in which
+players are still joining, more replicates on dedicated
 hardware, nodes pushed past their knees at higher core counts, larger
 placement problems, state handover instead of reconnection, and network
 impairments that make the bandwidth term
