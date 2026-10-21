@@ -561,7 +561,7 @@ under `balanced` the governor saw a mostly idle core and kept it at
 same edge1 cell, minutes apart, one per mode: 42.4% vs 17.8%
 (`results/raw/probe-balanced`, `probe-performance`).
 
-It also explains `grid1-edge1-contended` (6.x, 08 §8.6): `grid1` started at
+It also explains `grid1-edge1-contended` (08 §8.6): `grid1` started at
 23:43 in Balanced mode and the switch to Performance came 13 minutes in,
 during the edge1 cells. It had been blamed on interactive use of the laptop.
 
