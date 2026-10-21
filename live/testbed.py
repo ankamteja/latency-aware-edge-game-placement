@@ -105,15 +105,20 @@ class CpuMeter:
 def server_sample(node, cpu):
     """Never raises: a counter that cannot be read this time is None."""
     try:
-        mspt = MSPT_RE.search(rcon(node, "mspt"))
-        players = LIST_RE.search(rcon(node, "list"))
+        mspt_raw = rcon(node, "mspt").strip()
+        list_raw = rcon(node, "list").strip()
         c = cpu.read(node)
     except Exception:
-        return {"players": None, "mspt_ms": None, "cpu_pct": None}
+        return {"players": None, "mspt_ms": None, "cpu_pct": None, "online": [], "raw": []}
+    mspt, players = MSPT_RE.search(mspt_raw), LIST_RE.search(list_raw)
+    names = list_raw.split(":", 1)[1].replace(" ", "").split(",") if ":" in list_raw else []
     return {
         "players": int(players.group(1)) if players else None,
         "mspt_ms": float(mspt.group(1)) if mspt else None,
         "cpu_pct": c,
+        "online": [n for n in names if n],
+        # what the server itself printed, for the dashboard's raw feed
+        "raw": [f"rcon list: {list_raw[:90]}", f"rcon mspt: {' '.join(mspt_raw.split())[:110]}"],
     }
 
 

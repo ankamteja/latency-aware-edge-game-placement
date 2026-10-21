@@ -8,8 +8,9 @@
 #   live/load.sh remove 20          take 20 bots (the 2 newest matches) off
 #   live/load.sh remove 20 edge2    take 20 bots off edge2
 #   live/load.sh status             players, tick time and p95 per node, now
-#
-# Start a session first: dashboard, scenario "Manual", Start run.
+#   live/load.sh start [model]      start a manual session (model: learned,
+#                                   analytical or queueing; default learned)
+#   live/load.sh stop               end the session, disconnect every bot
 set -euo pipefail
 API=http://127.0.0.1:8090
 matches() { echo $(( (${1:?bot count} + 9) / 10 )); }
@@ -20,7 +21,10 @@ case "${1:-}" in
   remove) n=$(matches "${2:-10}")
           body="{\"action\":\"remove\",\"matches\":$n${3:+,\"node\":\"$3\"},\"source\":\"terminal\"}"
           echo "removing $((n*10)) bots ($n matches)${3:+ from $3}" ;;
+  start)  curl -sS -X POST "$API/api/run" -H 'content-type: application/json' \
+               -d "{\"policy\":\"${2:-learned}\",\"scenario\":\"manual\",\"arrival\":\"nearest\"}"; echo; exit ;;
+  stop)   curl -sS -X POST "$API/api/stop"; echo; exit ;;
   status) cd "$(dirname "$0")/.." && exec python3 -m live.status ;;
-  *) sed -n '2,13p' "$0"; exit 1 ;;
+  *) sed -n '2,16p' "$0"; exit 1 ;;
 esac
 curl -sS -X POST "$API/api/load" -H 'content-type: application/json' -d "$body"; echo

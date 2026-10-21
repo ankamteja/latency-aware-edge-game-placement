@@ -140,6 +140,11 @@ tbody tr{cursor:default}
 .opload{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding-top:12px;margin-top:12px;border-top:1px solid var(--line2)}
 input[type=number]{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:7px 9px;width:84px;min-height:36px;color:var(--text);font:inherit}
 .cmd{font:11px var(--mono);color:var(--muted);background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:6px 9px}
+.term{font:12px/1.7 var(--mono);color:#a9c8ee;background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:10px 12px;white-space:pre;overflow-x:auto}
+.tlog{max-height:300px;margin-top:6px}
+.raw{font:11px/1.6 var(--mono);max-height:240px;overflow:auto}
+.raw div{display:grid;grid-template-columns:96px 54px 1fr;gap:10px;border-bottom:1px solid var(--line2);padding:2px 0}
+.raw .ts{color:var(--faint)}.raw .src{color:var(--muted)}.raw .srv{color:#a9c8ee}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -182,10 +187,10 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);border-
     <!-- LIVE -->
     <section class="page on" id="page-live" aria-labelledby="h-live">
       <h1 class="ptitle" id="h-live">Live placement</h1>
-      <p class="psub">Matches of 10 real game clients arrive and leave on a fixed schedule. The controller reads every node's measured latency and load, asks its latency model where each match should be, and moves a match when the model predicts it is worth it.</p>
+      <p class="psub">Every player here is a real game client connected to a real server. Drive the load from a terminal; the twin, the raw feed and the controller's moves follow within one 2 s tick.</p>
 
       <div class="card">
-        <div class="ch"><span class="ct">Run control</span><span class="hint" id="busy"></span></div>
+        <div class="ch"><span class="ct">Session</span><span class="hint" id="busy"></span></div>
         <div class="cb">
           <div class="ctl">
             <div class="field"><label for="f-pol">Controller model</label>
@@ -196,9 +201,9 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);border-
               </select></div>
             <div class="field"><label for="f-sc">Scenario</label>
               <select id="f-sc">
-                <option value="standard" selected>Standard: up to 140 players, 13 min</option>
+                <option value="standard">Standard: up to 140 players, 13 min</option>
                 <option value="quick">Quick: up to 60 players, 4 min</option>
-                <option value="manual">Manual: you drive the load</option>
+                <option value="manual" selected>Manual: load from the terminal</option>
               </select></div>
             <div class="field"><label for="f-ar">New matches land</label>
               <select id="f-ar">
@@ -209,23 +214,34 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);border-
             <button class="btn danger" id="b-stop" disabled>Stop</button>
             <button class="btn" id="b-pause" aria-pressed="false">Pause view</button>
           </div>
-          <div class="opload" aria-label="Operator load">
-            <div class="field"><label for="o-node">Overload node</label>
-              <select id="o-node"><option>edge1</option><option>edge2</option><option>edge3</option><option>cloud</option></select></div>
-            <div class="field"><label for="o-n">Matches (10 players each)</label><input id="o-n" type="number" min="1" max="10" value="4"></div>
-            <button class="btn" id="b-add">Add load</button>
-            <button class="btn" id="b-rem">Remove load</button>
-            <span class="cmd" id="o-cmd">live/load.sh add edge1 40</span>
-          </div>
           <p class="hint mt" id="ctl-msg"></p>
         </div>
       </div>
 
-      <div class="card mt">
+      <div class="grid g2 mt">
+      <div class="card">
         <div class="ch"><span class="ct">Digital twin</span>
           <span class="legend"><span><i style="background:#57a84a"></i>p95 under 50 ms</span><span><i style="background:#c9963e"></i>50 to 100 ms</span><span><i style="background:#d05a52"></i>over 100 ms budget</span><span>link width = players</span></span></div>
         <div class="cb"><svg id="twin" viewBox="0 0 1000 430" role="img" aria-label="Live topology: the client and four game server nodes with their load and latency">
           <g id="tw-links"></g><g id="tw-client"></g><g id="tw-nodes"></g><g id="tw-anim"></g></svg></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Terminal</span><span class="hint">type these in a shell</span></div>
+        <div class="cb">
+          <pre class="term" aria-label="Commands">live/load.sh start learned
+live/load.sh add edge1 60
+live/load.sh status
+live/load.sh remove 20
+live/load.sh stop</pre>
+          <div class="biglbl mt">received from the terminal</div>
+          <div class="log tlog" id="tlog"><p class="empty">Nothing yet.</p></div>
+        </div>
+      </div>
+      </div>
+
+      <div class="card mt">
+        <div class="ch"><span class="ct">Raw telemetry</span><span class="hint">as read, newest first: bot latency lines and each server's own console output</span></div>
+        <div class="cb"><div class="raw" id="raw" aria-live="off"><p class="empty">Starts with a session.</p></div></div>
       </div>
 
       <div class="grid g4 mt" id="nodes"></div>
@@ -380,7 +396,8 @@ function nodeCard(n,d){
     <div class="cb">
       <div class="biglbl">measured p95, last 10 s</div>
       <div class="big ${lvl(p95,budget)}">${d.players?fmtMs(p95):"idle"}</div>
-      <div class="kv"><span>players</span><span>${d.players} / 100${d.server_players!=null&&d.server_players!==d.players?` (server ${d.server_players})`:""}</span></div>
+      <div class="kv"><span>players, controller</span><span>${d.players} / 100</span></div>
+      <div class="kv"><span>online, server says</span><span>${d.server_players??"-"}</span></div>
       <div class="bar"><i style="width:${d.players}%"></i></div>
       <div class="kv mt"><span>CPU</span><span>${cpu==null?"-":Math.round(cpu)+"% of "+cap+"%"}</span></div>
       <div class="bar"><i class="${cpuShare>90?"crit":cpuShare>70?"warn":""}" style="width:${cpuShare}%"></i></div>
@@ -388,6 +405,7 @@ function nodeCard(n,d){
       <div class="kv"><span>p50</span><span>${fmtMs(d.p50_ms)}</span></div>
       <div class="preds"><div class="biglbl">predicted p95 at this load</div>${preds}</div>
       <div class="chips" aria-label="matches on ${n}">${chips}</div>
+      ${(d.online||[]).length?`<div class="hint mt" style="word-break:break-all">${d.online.slice(0,12).join(" ")}${d.online.length>12?` +${d.online.length-12}`:""}</div>`:""}
     </div></article>`;
 }
 
@@ -419,7 +437,7 @@ function renderTwin(s){
   $("tw-links").innerHTML=links; $("tw-nodes").innerHTML=panels;
   const total=NODES.reduce((a,n)=>a+nodes[n].players,0), nm=NODES.reduce((a,n)=>a+(nodes[n].matches||[]).length,0);
   $("tw-client").innerHTML=`<rect class="tw-panel" x="20" y="${TW.cy-58}" width="${TW.cx-20}" height="116" rx="3"/>
-    <text class="tw-name" x="36" y="${TW.cy-32}">client</text><text class="tw-spec" x="36" y="${TW.cy-16}">game players</text>
+    <text class="tw-name" x="36" y="${TW.cy-32}">client</text><text class="tw-spec" x="36" y="${TW.cy-16}">real game clients</text>
     <text class="tw-big" x="36" y="${TW.cy+16}" fill="${css('--text')}">${total}</text><text class="tw-k" x="36" y="${TW.cy+34}">PLAYERS, ${nm} MATCHES</text>
     <text class="tw-k" x="36" y="${TW.cy+50}">CONTROLLER: ${(MLABEL[s.policy]||"-").toUpperCase()}</text>`;
   // animate new migrations along src link, through the client, out the dst link
@@ -466,6 +484,10 @@ function renderLive(s){
   chart($("c-players"),{xMax:xm,yMin:0,yMax:100,series:NODES.map(n=>({color:css('--n-'+n),points:series.map(r=>[r.t,r.nodes[n].players])}))});
   const sh=s.summary?.shadow||{};
   $("shadow").innerHTML=MODELS.filter(m=>sh[m]).map(m=>{const x=sh[m];return `<tr><td><span class="sw" style="display:inline-block;margin-right:8px;background:${css('--m-'+m)}"></span>${MLABEL[m]}${m===s.policy?" (in control)":""}</td><td>${x.windows}</td><td>${fmtMs(x.median_abs_err_ms)}</td><td>${fmtMs(x.mae_ms)}</td><td>${f2(x.accuracy)}</td><td>${f2(x.precision)}</td><td>${f2(x.recall)}</td><td>${f2(x.f1)}</td></tr>`}).join("")||'<tr><td colspan="8" class="empty">Starts scoring once a node has 20 samples.</td></tr>';
+  const tl=(s.log||[]).filter(e=>e.source==="terminal");
+  $("tlog").innerHTML=tl.map(e=>`<div class="ev ${e.kind}"><div class="t">t ${Math.round(e.t)} s</div><div class="x">${e.text.replace(/^terminal: /,"")}</div></div>`).join("")||'<p class="empty">Nothing yet.</p>';
+  const hh=ms=>{const d=new Date(ms);return d.toLocaleTimeString([], {hour12:false})+"."+String(d.getMilliseconds()).padStart(3,"0")};
+  $("raw").innerHTML=(s.raw||[]).map(r=>`<div><span class="ts">${hh(r.ts)}</span><span class="src">${r.src}</span><span class="${r.kind==="server"?"srv":""}">${r.text.replace(/</g,"&lt;")}</span></div>`).join("")||'<p class="empty">Starts with a session.</p>';
   const log=s.log||[];
   $("ev-n").textContent=log.length?log.length+" latest":"";
   $("log").innerHTML=log.map(e=>{let d="";
@@ -496,16 +518,6 @@ $("b-start").addEventListener("click",async()=>{
 });
 $("b-stop").addEventListener("click",async()=>{const r=await fetch("/api/stop",{method:"POST"});$("ctl-msg").textContent=r.ok?"stopping, disconnecting every match":"nothing to stop"});
 $("b-pause").addEventListener("click",e=>{paused=!paused;e.target.setAttribute("aria-pressed",paused);e.target.textContent=paused?"Resume view":"Pause view";if(!paused&&last)renderLive(last)});
-
-const cmdText=()=>{$("o-cmd").textContent=`live/load.sh add ${$("o-node").value} ${$("o-n").value*10}`};
-$("o-node").addEventListener("change",cmdText);$("o-n").addEventListener("input",cmdText);
-async function sendLoad(action){
-  const body=action==="add"?{action,node:$("o-node").value,matches:+$("o-n").value}:{action,matches:+$("o-n").value};
-  const r=await fetch("/api/load",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-  const j=await r.json(); $("ctl-msg").textContent=r.ok?(action==="add"?`queued ${body.matches} matches onto ${body.node}`:`queued removal of ${body.matches} matches`):(j.detail||"failed");
-}
-$("b-add").addEventListener("click",()=>sendLoad("add"));
-$("b-rem").addEventListener("click",()=>sendLoad("remove"));
 
 /* ---------- compare ---------- */
 const selected=new Set();

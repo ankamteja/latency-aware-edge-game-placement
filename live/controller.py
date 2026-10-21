@@ -132,6 +132,9 @@ class Run:
         self.server = {n: {} for n in self.nodes}
         self.cpu = tb.CpuMeter()
         self.timeline, self.migrations, self.log = [], [], deque(maxlen=200)
+        # recent raw telemetry exactly as read: bot latency lines and server
+        # console output, so the dashboard can show where every number comes from
+        self.raw = deque(maxlen=80)
         # (model, node, predicted, measured): one row per node per 10 s window
         # in which that node's load did not change, so a prediction is never
         # graded against samples taken at a different load
@@ -258,7 +261,10 @@ class Run:
 
     # ---- measurement --------------------------------------------------------
     def drain(self, m):
-        for ts, bot, rtt in m.tail.read():
+        lines = m.tail.read()
+        for ts, bot, rtt in lines[-2:]:          # a sample of each match per tick
+            self.raw.appendleft({"ts": ts, "src": m.node, "text": f"{bot} rtt {rtt:.0f} ms  (m{m.mid:02d})"})
+        for ts, bot, rtt in lines:
             if m.moved_at is not None and bot not in m.back:
                 m.back[bot] = ts / 1000
             self.samples[m.node].append((ts, rtt))
@@ -277,8 +283,11 @@ class Run:
     def read_servers(self):
         with ThreadPoolExecutor(len(self.nodes)) as ex:
             res = dict(zip(self.nodes, ex.map(lambda n: tb.server_sample(n, self.cpu), self.nodes)))
+        now_ms = int(time.time() * 1000)
         for n, r in res.items():
             self.server[n] = r
+            for line in r.get("raw", []):
+                self.raw.appendleft({"ts": now_ms, "src": n, "text": line, "kind": "server"})
 
     def snapshot(self):
         load = self.load()
@@ -296,6 +305,7 @@ class Run:
                         self.shadow_rows.append((m, n, pv, p95))
             nodes[n] = {"cores": spec["cores"], "rtt_ms": spec["rtt_ms"], "players": load[n],
                         "server_players": self.server[n].get("players"),
+                        "online": self.server[n].get("online", []),
                         "mspt_ms": self.server[n].get("mspt_ms"),
                         "cpu_pct": self.server[n].get("cpu_pct"),
                         "p50_ms": pct(rtts, 50) if load[n] else None, "p95_ms": p95,
@@ -423,7 +433,8 @@ class Run:
                 "arrival": self.arrival, "status": self.status, "t": round(self.elapsed(), 1), "length_s": self.length,
                 "updated": time.time(), "budget_ms": BUDGET_MS, "nodes": nodes,
                 "series": self.timeline[-450:], "migrations": self.migrations[-50:],
-                "log": list(self.log)[:60], "summary": self.summary()}
+                "log": list(self.log)[:60], "raw": list(self.raw)[:60],
+                "summary": self.summary()}
 
 
 if __name__ == "__main__":
