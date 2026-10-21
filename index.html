@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge Placement Console</title>
+<style>
+:root{
+  --bg:#111217; --panel:#181b1f; --panel2:#14171b; --line:#2c3035; --line2:#22262b;
+  --text:#c4c9d4; --muted:#8e98a8; --faint:#5d6778;
+  --blue:#5189c8; --green:#57a84a; --amber:#c9963e; --red:#d05a52;
+  --m-analytical:#a98ad6; --m-queueing:#4fa3a5; --m-learned:#5189c8; --m-learned-live:#7fc1e8; --m-measured:#d7dbe2;
+  --n-edge1:#6fa8dc; --n-edge2:#e0a458; --n-edge3:#7fb77e; --n-cloud:#c792b8;
+  --mono:ui-monospace,'JetBrains Mono','Cascadia Code',Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--sans);display:flex;flex-direction:column}
+button,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.mono{font-family:var(--mono)}
+
+/* header */
+#hdr{height:46px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 18px;flex-shrink:0}
+#menu{background:none;border:0;color:var(--muted);width:32px;height:32px;border-radius:3px;cursor:pointer;display:grid;place-items:center}
+#menu:hover{background:#21262d;color:var(--text)}
+#title{font-weight:600;letter-spacing:.2px;white-space:nowrap}
+#hdr .spacer{flex:1}
+#clock{color:var(--muted);font:11px var(--mono)}
+
+/* sysbar */
+#sys{background:var(--panel2);border-bottom:1px solid var(--line2);padding:5px 18px;display:flex;gap:22px;flex-wrap:wrap;font:11px var(--mono);flex-shrink:0}
+#sys .k{color:var(--faint);text-transform:uppercase;letter-spacing:.5px;font-size:10px;margin-right:6px}
+#sys .v{color:var(--text);font-weight:600}
+.ok{color:#6cc35e!important}.warn{color:#d6a650!important}.crit{color:#e0736b!important}
+
+/* layout */
+#body{flex:1;display:flex;min-height:0}
+#side{width:208px;min-width:208px;background:var(--bg);border-right:1px solid var(--line);display:flex;flex-direction:column;transition:width .18s,min-width .18s;overflow:hidden}
+#side.closed{width:0;min-width:0;border-right:0}
+.sec{padding:16px 14px 4px;color:var(--faint);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 14px;color:var(--muted);border-left:2px solid transparent;cursor:pointer;background:none;border-top:0;border-right:0;border-bottom:0;width:100%;text-align:left;white-space:nowrap}
+.nav:hover{background:var(--panel);color:var(--text)}
+.nav[aria-current=page]{color:#7aa7dd;border-left-color:var(--blue);background:var(--panel)}
+.nav svg{width:15px;height:15px;flex-shrink:0}
+#side .foot{margin-top:auto;padding:12px 14px;border-top:1px solid var(--line2);font-size:11px;color:var(--faint)}
+main{flex:1;overflow:auto;padding:18px 20px 40px}
+.page{display:none}.page.on{display:block}
+.ptitle{font-size:16px;font-weight:600}
+.psub{color:var(--muted);font-size:12px;margin:3px 0 16px;max-width:900px}
+
+/* cards */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:3px;min-width:0}
+.ch{padding:9px 14px;border-bottom:1px solid var(--line2);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ct{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.cb{padding:12px 14px}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.g11{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g2,.g11{grid-template-columns:1fr}}
+@media (max-width:640px){.g4{grid-template-columns:1fr}#side{position:absolute;z-index:5;height:calc(100% - 46px)}}
+.mt{margin-top:12px}
+
+/* controls */
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:7px 9px;min-width:170px;min-height:36px}
+.btn{border:1px solid var(--line);background:#1e2226;border-radius:3px;padding:7px 14px;min-height:36px;cursor:pointer;font-weight:600}
+.btn:hover:not(:disabled){background:#252a30}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.primary{background:#1c2a3e;border-color:#2b4a72;color:#a9c8ee}
+.btn.primary:hover:not(:disabled){background:#22344d}
+.btn.danger{background:#2e1c1c;border-color:#5a2c2c;color:#e9a19b}
+.hint{color:var(--muted);font-size:11px;min-height:16px}
+
+/* node cards */
+.node .ch .ct{color:var(--text);font-size:12px;text-transform:none;letter-spacing:0;font-family:var(--mono)}
+.spec{color:var(--muted);font:11px var(--mono)}
+.big{font:600 26px/1.1 var(--mono);margin:2px 0 2px}
+.biglbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.bar{height:5px;background:var(--line2);border-radius:2px;overflow:hidden;margin-top:4px}
+.bar>i{display:block;height:100%;background:#3a6a95;transition:width .4s}
+.bar>i.warn{background:#9a7428}.bar>i.crit{background:#9a3a33}
+.kv{display:flex;justify-content:space-between;font:11px var(--mono);padding:3px 0;border-bottom:1px solid var(--line2)}
+.kv span:first-child{color:var(--muted);font-family:var(--sans)}
+.preds{margin-top:10px}
+.prow{display:grid;grid-template-columns:10px 1fr auto auto;gap:8px;align-items:center;font:11px var(--mono);padding:3px 0}
+.sw{width:8px;height:8px;border-radius:2px}
+.err{color:var(--muted);min-width:62px;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;min-height:20px}
+.chip{font:10px var(--mono);padding:1px 6px;border:1px solid var(--line);border-radius:3px;color:var(--muted)}
+.chip.moved{border-color:#6a5420;color:#d6a650}
+
+/* charts */
+.chart{width:100%;height:260px;display:block}
+.chart text{fill:var(--muted);font:10px var(--mono)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font:11px var(--mono);color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:6px}
+.legend i.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px)!important}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font:11px var(--mono)}
+th{color:var(--muted);font:600 10px var(--sans);text-transform:uppercase;letter-spacing:.6px;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid var(--line2);text-align:right;white-space:nowrap}
+tr.sel td{background:#1c222e}
+tbody tr{cursor:default}
+.tblwrap{overflow-x:auto}
+
+/* event log */
+.log{max-height:330px;overflow:auto}
+.ev{border-left:3px solid var(--line);padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--line2)}
+.ev .t{font:10px var(--mono);color:var(--faint)}
+.ev .x{font-size:12px}
+.ev .d{font:11px var(--mono);color:var(--muted)}
+.ev.arrive{border-left-color:var(--blue)}.ev.migrate{border-left-color:var(--amber)}
+.ev.depart,.ev.unload{border-left-color:#4b5563}.ev.reject,.ev.overload{border-left-color:var(--red)}
+.empty{color:var(--muted);font-size:12px;padding:18px 0;text-align:center}
+.note{color:var(--muted);font-size:12px;line-height:1.6;max-width:880px}
+.note b{color:var(--text);font-weight:600}
+/* twin */
+#twin{width:100%;height:auto;display:block}
+#twin text{font-family:var(--mono)}
+.tw-name{fill:var(--text);font:600 13px var(--mono)}
+.tw-spec{fill:var(--muted);font-size:10.5px}
+.tw-big{font:600 22px var(--mono)}
+.tw-k{fill:var(--muted);font-size:10px;letter-spacing:.5px}
+.tw-v{fill:var(--text);font-size:11px}
+.tw-panel{fill:var(--panel2);stroke:var(--line);stroke-width:1.2}
+.tw-panel.ok{stroke:#2f5a2a}.tw-panel.warn{stroke:#6a5420}.tw-panel.crit{stroke:#7a2f2a}
+.ld{font-size:10px;fill:var(--muted)}
+.opload{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding-top:12px;margin-top:12px;border-top:1px solid var(--line2)}
+input[type=number]{background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:7px 9px;width:84px;min-height:36px;color:var(--text);font:inherit}
+.cmd{font:11px var(--mono);color:var(--muted);background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:6px 9px}
+.term{font:12px/1.7 var(--mono);color:#a9c8ee;background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:10px 12px;white-space:pre;overflow-x:auto}
+.tlog{max-height:300px;margin-top:6px}
+.raw{font:11px/1.6 var(--mono);max-height:240px;overflow:auto}
+.raw div{display:grid;grid-template-columns:96px 54px 1fr;gap:10px;border-bottom:1px solid var(--line2);padding:2px 0}
+.raw .ts{color:var(--faint)}.raw .src{color:var(--muted)}.raw .srv{color:#a9c8ee}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <button id="menu" aria-label="Toggle navigation" aria-expanded="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <span id="title">Edge Placement Console</span>
+  <span class="spacer"></span>
+  <span id="updated" class="mono" style="color:var(--muted);font-size:11px"></span>
+  <span id="clock"></span>
+</header>
+<div id="sys" aria-label="Run summary" hidden>
+  <span><span class="k">run</span><span class="v" id="s-run">none</span></span>
+  <span><span class="k">time</span><span class="v" id="s-t">-</span></span>
+  <span><span class="k">players</span><span class="v" id="s-pl">-</span></span>
+  <span><span class="k">worst p95 now</span><span class="v" id="s-w">-</span></span>
+  <span><span class="k">predicted worst</span><span class="v" id="s-pw">-</span></span>
+  <span><span class="k">over budget</span><span class="v" id="s-ob">-</span></span>
+  <span><span class="k">migrations</span><span class="v" id="s-mg">-</span></span>
+</div>
+<div id="body">
+  <nav id="side" aria-label="Sections">
+    <div class="sec">Console</div>
+    <button class="nav" data-page="live" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Live placement</button>
+    <button class="nav" data-page="compare">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Compare runs</button>
+    <div class="sec">Evidence</div>
+    <button class="nav" data-page="offline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>Measured results</button>
+    <button class="nav" data-page="method">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>How it works</button>
+    <div class="foot mono">4 nodes · 0.5 / 1 / 2 / 4 cores<br>5 / 15 / 30 / 40 ms RTT</div>
+  </nav>
+  <main>
+    <!-- LIVE -->
+    <section class="page on" id="page-live" aria-labelledby="h-live">
+      <h1 class="ptitle" id="h-live">Live placement</h1>
+
+      <div class="card">
+        <div class="ch"><span class="ct">Session</span><span class="hint" id="busy"></span></div>
+        <div class="cb">
+          <div class="ctl">
+            <div class="field"><label for="f-pol">Controller model</label>
+              <select id="f-pol">
+                <option value="analytical">Analytical, load-blind (baseline)</option>
+                <option value="queueing">Queueing, M/M/1</option>
+                <option value="learned">Learned (ours)</option>
+                <option value="learned-live" selected>Learned, corrected live (ours)</option>
+              </select></div>
+            <div class="field"><label for="f-sc">Scenario</label>
+              <select id="f-sc">
+                <option value="standard">Standard: up to 140 players, 13 min</option>
+                <option value="quick">Quick: up to 60 players, 4 min</option>
+                <option value="capacity-drop">Capacity drop: edge1 CPU halved mid-run, 9 min</option>
+                <option value="manual" selected>Manual: load from the terminal</option>
+              </select></div>
+            <div class="field"><label for="f-ar">New matches land</label>
+              <select id="f-ar">
+                <option value="nearest" selected>On the nearest node (matchmaker)</option>
+                <option value="model">Where the model says</option>
+              </select></div>
+            <button class="btn primary" id="b-start">Start run</button>
+            <button class="btn danger" id="b-stop" disabled>Stop</button>
+            <button class="btn" id="b-pause" aria-pressed="false">Pause view</button>
+          </div>
+          <p class="hint mt" id="ctl-msg"></p>
+        </div>
+      </div>
+
+      <div class="grid g2 mt">
+      <div class="card">
+        <div class="ch"><span class="ct">Digital twin</span>
+          <span class="legend"><span><i style="background:#57a84a"></i>p95 under 50 ms</span><span><i style="background:#c9963e"></i>50 to 100 ms</span><span><i style="background:#d05a52"></i>over 100 ms</span></span></div>
+        <div class="cb"><svg id="twin" viewBox="0 0 1000 430" role="img" aria-label="Live topology: the client and four game server nodes with their load and latency">
+          <g id="tw-links"></g><g id="tw-client"></g><g id="tw-nodes"></g><g id="tw-anim"></g></svg></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Terminal</span><span class="hint">type these in a shell</span></div>
+        <div class="cb">
+          <pre class="term" aria-label="Commands">live/load.sh start learned-live
+live/load.sh add edge1 60
+live/load.sh status
+live/load.sh throttle edge1 0.25
+live/load.sh restore edge1
+live/load.sh remove 20
+live/load.sh stop</pre>
+          <div class="biglbl mt">received from the terminal</div>
+          <div class="log tlog" id="tlog"></div>
+        </div>
+      </div>
+      </div>
+
+      <div class="card mt">
+        <div class="ch"><span class="ct">Raw telemetry</span><span class="hint">as read, newest first: bot latency lines and each server's own console output</span></div>
+        <div class="cb"><div class="raw" id="raw" aria-live="off"></div></div>
+      </div>
+
+      <div class="grid g4 mt" id="nodes"></div>
+
+      <div class="grid g2 mt">
+        <div class="card">
+          <div class="ch"><span class="ct">Worst-off players: p95 in-game latency</span>
+            <span class="legend"><span><i style="background:var(--m-measured)"></i>measured</span><span style="color:var(--blue)"><i class="dash"></i>controller predicted</span><span style="color:var(--red)"><i class="dash"></i>100 ms budget</span><span style="color:var(--amber)"><i style="width:2px;height:10px;background:var(--amber)"></i>migration</span></span></div>
+          <div class="cb"><svg class="chart" id="c-worst" role="img" aria-label="Worst node p95 latency over time"></svg></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Events</span><span class="hint" id="ev-n"></span></div>
+          <div class="log" id="log" aria-live="off"></div>
+        </div>
+      </div>
+
+      <div class="grid g11 mt">
+        <div class="card">
+          <div class="ch"><span class="ct">Players per node</span>
+            <span class="legend" id="lg-nodes"></span></div>
+          <div class="cb"><svg class="chart" id="c-players" role="img" aria-label="Players on each node over time"></svg></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Every model in shadow, this run</span><span class="hint">scored on 10 s node windows</span></div>
+          <div class="cb tblwrap">
+            <table aria-label="Live model scores">
+              <thead><tr><th>model</th><th>windows</th><th>median err</th><th>MAE</th><th>accuracy</th><th>precision</th><th>recall</th><th>F1</th></tr></thead>
+              <tbody id="shadow"></tbody>
+            </table>
+            <p class="hint mt">Positive = measured p95 above 100 ms. Every model predicts every loaded node on every tick, whichever model is in control.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPARE -->
+    <section class="page" id="page-compare" aria-labelledby="h-cmp">
+      <h1 class="ptitle" id="h-cmp">Compare runs</h1>
+      <p class="psub">Every finished run, same schedule of arrivals and departures. Select rows to overlay their worst-player latency.</p>
+      <div class="card">
+        <div class="ch"><span class="ct">Runs</span><button class="btn" id="b-refresh">Refresh</button></div>
+        <div class="cb tblwrap">
+          <table aria-label="Finished runs">
+            <thead><tr><th>run</th><th>controller</th><th>arrival</th><th>players p95</th><th>p99</th><th>worst p95 median</th><th>worst p95 max</th><th>time over budget</th><th>samples over budget</th><th>migrations</th><th>reconnect</th></tr></thead>
+            <tbody id="runs"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card mt">
+        <div class="ch"><span class="ct">Worst-off players, selected runs</span><span class="legend" id="lg-cmp"></span></div>
+        <div class="cb"><svg class="chart" id="c-cmp" role="img" aria-label="Worst node p95 for selected runs"></svg></div>
+      </div>
+    </section>
+
+    <!-- OFFLINE -->
+    <section class="page" id="page-offline" aria-labelledby="h-off">
+      <h1 class="ptitle" id="h-off">Measured results</h1>
+      <p class="psub">From the controlled grid (two replicates to fit on, a third held out to test on) and the deployed placements. Full write-up in docs/08-results.md.</p>
+      <div class="grid g11">
+        <div class="card">
+          <div class="ch"><span class="ct">p95 against players, per node</span><span class="legend" id="lg-grid"></span></div>
+          <div class="cb"><svg class="chart" id="c-grid" role="img" aria-label="Measured p95 against players per node"></svg>
+            <p class="hint mt">Dashed: what the load-blind formula predicts, the node's network RTT at every load.</p></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Each model's placement, deployed</span></div>
+          <div class="cb tblwrap">
+            <table aria-label="Deployed placements"><thead><tr><th>players</th><th>model</th><th>placement e1/e2/e3/c</th><th>predicted worst</th><th>measured worst</th></tr></thead><tbody id="dep"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="card mt">
+        <div class="ch"><span class="ct">Model scores, out of sample</span><span class="hint">no cell is scored by a model fitted on it</span></div>
+        <div class="cb tblwrap">
+          <table aria-label="Model metrics"><thead><tr><th>test</th><th>model</th><th>median err</th><th>MAE</th><th>R² log</th><th>Spearman</th><th>F1 at 50 ms</th><th>F1 at 100 ms</th><th>accuracy at 100 ms</th></tr></thead><tbody id="met"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- METHOD -->
+    <section class="page" id="page-method" aria-labelledby="h-m">
+      <h1 class="ptitle" id="h-m">How it works</h1>
+      <p class="psub">From the measured grid to a match moving between nodes in real time.</p>
+      <div class="card"><div class="cb"><img src="/diagrams/workflow.svg" alt="Workflow: offline, the load grid becomes a dataset and the three models are fitted; live, every 2 s the controller reads telemetry, measures each node, every model predicts, the controller decides whether to move one match, migrates it, and the loop repeats; the dashboard and run logs show every stage." style="width:100%;height:auto;display:block"></div></div>
+      <div class="card mt"><div class="cb note">
+        <p><b>The question.</b> Edge placement ranks nodes with latency = propagation + size / bandwidth. That formula has no term for server load, so it always prefers the nearest node, however crowded.</p><br>
+        <p><b>The testbed.</b> Four game servers in containers: edge1 (0.5 core, 5 ms), edge2 (1 core, 15 ms), edge3 (2 cores, 30 ms), cloud (4 cores, 40 ms). Players are real protocol-level clients. Latency is the in-game round trip through each server's game thread.</p><br>
+        <p><b>The controller.</b> Every 2 s it reads every bot's latency and every server's player count, tick time and CPU. Every 10 s it asks its model whether moving one match would lower the predicted worst-off players' p95 by at least 10 ms and 20%, or keep it and lower the average. A moved match is cooled down for 60 s so it cannot bounce. Moving a match means its 10 players disconnect and log in to the other server; the reconnect time is measured.</p><br>
+        <p><b>The models.</b> Analytical: the load-blind formula. Queueing: RTT + s / (1 - u), the standard closed form. Learned: gradient-boosted trees fitted on the measured grid. Same inputs for all three: the node and its player count.</p><br>
+        <p><b>Fair comparison.</b> Every run uses the same arrival and departure schedule. By default every new match lands on the nearest node with room, as a distance-based matchmaker does, so runs differ only in the controller's model.</p>
+      </div></div>
+    </section>
+  </main>
+</div>
+
+<script src="replay.js"></script>
+<script>
+const NODES=["edge1","edge2","edge3","cloud"];
+const MODELS=["analytical","queueing","learned","learned-live"];
+const MLABEL={analytical:"Analytical",queueing:"Queueing",learned:"Learned","learned-live":"Learned, live-corrected"};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const $=id=>document.getElementById(id);
+const fmtMs=v=>v==null?"-":v>=1000?(v/1000).toFixed(v>=10000?0:1)+" s":(v>=100?Math.round(v):v.toFixed(1))+" ms";
+const pctf=v=>v==null?"-":(v*100).toFixed(0)+"%";
+const f2=v=>v==null||isNaN(v)?"-":(+v).toFixed(2);
+const lvl=(v,b)=>v==null?"":v>b?"crit":v>b/2?"warn":"ok";
+let paused=false, last=null, budget=100, busy=false;
+
+/* ---------- navigation ---------- */
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".nav").forEach(x=>x.removeAttribute("aria-current"));
+  b.setAttribute("aria-current","page");
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("on"));
+  $("page-"+b.dataset.page).classList.add("on");
+  if(b.dataset.page==="compare")loadRuns();
+  if(b.dataset.page==="offline")loadOffline();
+}));
+$("menu").addEventListener("click",()=>{const s=$("side");s.classList.toggle("closed");$("menu").setAttribute("aria-expanded",!s.classList.contains("closed"))});
+setInterval(()=>{$("clock").textContent=new Date().toLocaleTimeString([], {hour12:false})},1000);
+
+/* ---------- svg line chart ---------- */
+function chart(svg,{series,log=false,xMax,yMin,yMax,hline,markers=[],xLabel="s"}){
+  const W=svg.clientWidth||600,H=svg.clientHeight||260,L=52,R=28,T=10,B=24;
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  const all=series.flatMap(s=>s.points.filter(p=>p[1]!=null&&p[1]>0).map(p=>p[1]));
+  let lo=yMin??(log?Math.max(1,Math.min(...all,10)/1.5):0), hi=yMax??Math.max(...all,hline||1)*1.15;
+  if(!isFinite(hi))hi=log?1000:100; if(!isFinite(lo))lo=log?1:0;
+  const xm=xMax||Math.max(1,...series.flatMap(s=>s.points.map(p=>p[0])));
+  const X=x=>L+(x/xm)*(W-L-R);
+  const Y=v=>{if(log){const a=Math.log10(lo),b=Math.log10(hi);return T+(1-(Math.log10(Math.max(v,lo))-a)/(b-a))*(H-T-B)}return T+(1-(v-lo)/(hi-lo))*(H-T-B)};
+  let g=`<g stroke="${css('--line2')}" stroke-width="1">`, t="";
+  const ticks=log?[1,10,100,1000,10000,100000].filter(v=>v>=lo&&v<=hi):Array.from({length:5},(_,i)=>lo+(hi-lo)*i/4);
+  ticks.forEach(v=>{g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}"/>`;t+=`<text x="${L-6}" y="${Y(v)+3}" text-anchor="end">${log?fmtMs(v):Math.round(v)}</text>`});
+  for(let i=0;i<=4;i++){const x=xm*i/4;t+=`<text x="${X(x)}" y="${H-6}" text-anchor="middle">${Math.round(x)} ${xLabel}</text>`}
+  g+="</g>";
+  let m="";markers.forEach(x=>{m+=`<line x1="${X(x)}" x2="${X(x)}" y1="${T}" y2="${H-B}" stroke="${css('--amber')}" stroke-width="1.5" opacity=".7"/>`});
+  if(hline)m+=`<line x1="${L}" x2="${W-R}" y1="${Y(hline)}" y2="${Y(hline)}" stroke="${css('--red')}" stroke-dasharray="5 4" stroke-width="1.2"/>`;
+  let p="";series.forEach(s=>{let d="",pen=false;s.points.forEach(([x,y])=>{if(y==null||(log&&y<=0)){pen=false;return}d+=(pen?"L":"M")+X(x).toFixed(1)+" "+Y(y).toFixed(1);pen=true});
+    p+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w||1.8}" ${s.dash?'stroke-dasharray="5 4"':''} stroke-linejoin="round"/>`});
+  svg.innerHTML=g+m+p+t;
+}
+
+/* ---------- live ---------- */
+function nodeCard(n,d){
+  const cap=d.cores*100, cpu=d.cpu_pct, cpuShare=cpu==null?0:Math.min(100,cpu/cap*100);
+  const ms=d.mspt_ms, p95=d.p95_ms;
+  const preds=MODELS.map(m=>{const v=d.predicted?.[m];const e=(v!=null&&p95!=null)?Math.abs(v-p95):null;
+    return `<div class="prow"><span class="sw" style="background:${css('--m-'+m)}"></span><span>${MLABEL[m]}</span><span>${fmtMs(v)}</span><span class="err">${e==null?"":"off "+fmtMs(e)}</span></div>`}).join("");
+  const movedIds=new Set((last?.migrations||[]).filter(x=>x.t>(last.t-60)).map(x=>x.match));
+  const chips=(d.matches||[]).map(id=>`<span class="chip ${movedIds.has(id)?"moved":""}">m${String(id).padStart(2,"0")}</span>`).join("")||'<span class="hint">no matches</span>';
+  return `<article class="card node" aria-label="${n}">
+    <div class="ch"><span class="ct">${n}</span><span class="spec">${d.cores} core${d.cores==1?"":"s"} · ${d.rtt_ms.toFixed(1)} ms</span></div>
+    <div class="cb">
+      <div class="biglbl">measured p95, last 10 s</div>
+      <div class="big ${lvl(p95,budget)}">${d.players&&p95!=null?fmtMs(p95):""}</div>
+      <div class="kv"><span>players, controller</span><span>${d.players} / 100</span></div>
+      <div class="kv"><span>online, server says</span><span>${d.server_players??"-"}</span></div>
+      <div class="bar"><i style="width:${d.players}%"></i></div>
+      <div class="kv mt"><span>CPU</span><span>${cpu==null?"-":Math.round(cpu)+"% of "+cap+"%"}</span></div>
+      <div class="bar"><i class="${cpuShare>90?"crit":cpuShare>70?"warn":""}" style="width:${cpuShare}%"></i></div>
+      <div class="kv mt"><span>tick time</span><span class="${ms==null?"":ms>50?"crit":ms>25?"warn":""}">${ms==null?"-":ms.toFixed(1)+" ms"}</span></div>
+      <div class="kv"><span>p50</span><span>${fmtMs(d.p50_ms)}</span></div>
+      <div class="preds"><div class="biglbl">predicted p95 at this load</div>${preds}</div>
+      <div class="chips" aria-label="matches on ${n}">${chips}</div>
+      ${(d.online||[]).length?`<div class="hint mt" style="word-break:break-all">${d.online.slice(0,12).join(" ")}${d.online.length>12?` +${d.online.length-12}`:""}</div>`:""}
+    </div></article>`;
+}
+
+const TW={x:600,w:380,h:90,ys:{edge1:14,edge2:118,edge3:222,cloud:326},cx:190,cy:215};
+const stateColor=(p95,players)=>!players?css('--line'):p95==null?css('--muted'):p95>budget?css('--red'):p95>budget/2?css('--amber'):css('--green');
+const linkPath=n=>{const y=TW.ys[n]+TW.h/2;return `M${TW.cx} ${TW.cy} C ${TW.cx+170} ${TW.cy}, ${TW.x-170} ${y}, ${TW.x} ${y}`};
+const seenMig=new Set(); let twFirst=true;
+function renderTwin(s){
+  const nodes=s.nodes; let links="",panels="";
+  NODES.forEach(n=>{const d=nodes[n], col=stateColor(d.p95_ms,d.players), y=TW.ys[n];
+    links+=`<path d="${linkPath(n)}" fill="none" stroke="${col}" stroke-opacity="${d.players?0.85:0.5}" stroke-width="${1.2+d.players/14}"/>`;
+    const ly=(TW.cy+y+TW.h/2)/2;
+    links+=`<text class="ld" x="${(TW.cx+TW.x)/2}" y="${ly-6}" text-anchor="middle">${d.rtt_ms.toFixed(1)} ms</text>`;
+    const st=lvl(d.p95_ms,budget), cap=d.cores*100, cpu=d.cpu_pct==null?0:Math.min(1,d.cpu_pct/cap);
+    const pred=d.predicted||{};
+    let sq="";(d.matches||[]).slice(0,10).forEach((mid,i)=>{
+      sq+=`<rect x="${TW.x+14+i*15}" y="${y+TW.h-18}" width="11" height="11" rx="2" fill="${col}"><title>match ${mid}</title></rect>`});
+    const quota=d.quota_cores!=null&&Math.abs(d.quota_cores-d.cores)>0.01?d.quota_cores:null;
+    const spec=`${d.cores} core${d.cores==1?"":"s"}`;
+    // a CPU cut gets its own line under the match squares, where it has room
+    const cut=quota==null?"":`<text class="tw-spec" x="${TW.x+150}" y="${y+TW.h-8}" style="fill:${css('--red')}">CPU cut to ${quota.toFixed(2)} of ${d.cores}</text>`;
+    let body="";
+    if(d.players){
+      const pv=(label,v,c,yy)=>v==null?"":`<text class="tw-k" x="${TW.x+292}" y="${y+yy}">${label}</text><text class="tw-v" x="${TW.x+292}" y="${y+yy+14}" fill="${c}">${fmtMs(v)}</text>`;
+      body=`<text class="tw-big" x="${TW.x+14}" y="${y+52}" fill="${col}">${d.p95_ms==null?"":fmtMs(d.p95_ms)}</text>
+      <text class="tw-k" x="${TW.x+150}" y="${y+22}">PLAYERS</text><text class="tw-v" x="${TW.x+214}" y="${y+22}">${d.players}</text>
+      ${d.mspt_ms==null?"":`<text class="tw-k" x="${TW.x+150}" y="${y+40}">TICK</text><text class="tw-v" x="${TW.x+214}" y="${y+40}">${d.mspt_ms.toFixed(1)} ms</text>`}
+      ${d.cpu_pct==null?"":`<text class="tw-k" x="${TW.x+150}" y="${y+58}">CPU</text>
+      <rect x="${TW.x+214}" y="${y+51}" width="70" height="6" rx="2" fill="${css('--line2')}"/><rect x="${TW.x+214}" y="${y+51}" width="${70*cpu}" height="6" rx="2" fill="${cpu>.9?css('--red'):cpu>.7?css('--amber'):'#3a6a95'}"/>`}
+      ${pv("LEARNED",pred[s.policy==="learned-live"?"learned-live":"learned"],css('--m-learned'),22)}${pv("FORMULA",pred.analytical,css('--m-analytical'),52)}
+      ${sq}`;
+    }
+    panels+=`<g><rect class="tw-panel ${d.players?st:""}" x="${TW.x}" y="${y}" width="${TW.w}" height="${TW.h}" rx="3"/>
+      <text class="tw-name" x="${TW.x+14}" y="${y+22}">${n}</text><text class="tw-spec" x="${TW.x+70}" y="${y+22}">${spec}</text>${cut}
+      ${body}</g>`});
+  $("tw-links").innerHTML=links; $("tw-nodes").innerHTML=panels;
+  const total=NODES.reduce((a,n)=>a+nodes[n].players,0), nm=NODES.reduce((a,n)=>a+(nodes[n].matches||[]).length,0);
+  $("tw-client").innerHTML=`<rect class="tw-panel" x="20" y="${TW.cy-58}" width="${TW.cx-20}" height="116" rx="3"/>
+    <text class="tw-name" x="36" y="${TW.cy-32}">client</text>
+    ${s.policy?`<text class="tw-big" x="36" y="${TW.cy+6}" fill="${css('--text')}">${total}</text><text class="tw-k" x="36" y="${TW.cy+24}">PLAYERS IN ${nm} MATCHES</text>
+    <text class="tw-k" x="36" y="${TW.cy+42}">${MLABEL[s.policy].toUpperCase()} IN CONTROL</text>`:""}`;
+  // animate new migrations along src link, through the client, out the dst link
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  (s.migrations||[]).forEach(m=>{const k=s.run+":"+m.t+":"+m.match; if(seenMig.has(k))return; seenMig.add(k);
+    if(twFirst||reduce)return;
+    const ys=TW.ys[m.src]+TW.h/2, yd=TW.ys[m.dst]+TW.h/2;
+    const d=`M${TW.x} ${ys} C ${TW.x-170} ${ys}, ${TW.cx+170} ${TW.cy}, ${TW.cx} ${TW.cy} C ${TW.cx+170} ${TW.cy}, ${TW.x-170} ${yd}, ${TW.x} ${yd}`;
+    const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+    g.innerHTML=`<circle r="6" fill="${css('--amber')}"><animateMotion dur="1.8s" fill="freeze" path="${d}"/></circle>`;
+    $("tw-anim").appendChild(g); g.querySelector("animateMotion").beginElement(); setTimeout(()=>g.remove(),2000)});
+  twFirst=false;
+}
+
+function renderLive(s){
+  const st=s.status||"idle", running=st==="running";
+  const age=s.updated?(Date.now()/1000-s.updated):null, stale=running&&age!=null&&age>6;
+  $("sys").hidden=!s.nodes;
+  const up=$("updated");
+  up.textContent=s.updated?"updated "+new Date(s.updated*1000).toLocaleTimeString([], {hour12:false})
+    +(stale?`, no new data for ${Math.round(age)} s`:""):"";
+  up.style.color=stale?"var(--amber)":"var(--muted)";
+  $("b-start").disabled=running||busy; $("b-stop").disabled=!running;
+  // while a run is going the form shows that run, not the next one
+  for(const [id,v] of [["f-pol",s.policy],["f-sc",s.scenario],["f-ar",s.arrival]]){
+    const el=$(id); if(running&&v){el.value=v} el.disabled=running;
+  }
+  if(!s.nodes){
+    const spec={edge1:[0.5,5.155],edge2:[1,15.235],edge3:[2,30.251],cloud:[4,40.22]};
+    const idle={};NODES.forEach(n=>idle[n]={cores:spec[n][0],rtt_ms:spec[n][1],players:0,matches:[],predicted:{}});
+    $("nodes").innerHTML="";
+    renderTwin({nodes:idle,migrations:[]});
+    return }
+  budget=s.budget_ms||100;
+  const series=s.series||[], last1=series[series.length-1]||{};
+  $("s-run").textContent=s.run; $("s-t").textContent=s.scenario==="manual"?`${Math.round(s.t)} s`:`${Math.round(s.t)} / ${Math.round(s.length_s)} s`;
+  $("s-pl").textContent=last1.players??"-";
+  const w=$("s-w"); w.textContent=fmtMs(last1.worst_p95_ms); w.className="v "+lvl(last1.worst_p95_ms,budget);
+  $("s-pw").textContent=fmtMs(last1.predicted_worst_ms);
+  $("s-ob").textContent=pctf(s.summary?.time_over_budget_share);
+  $("s-mg").textContent=s.summary?.migrations??0;
+  $("nodes").innerHTML=NODES.map(n=>nodeCard(n,s.nodes[n])).join("");
+  renderTwin(s);
+  const xm=s.scenario==="manual"?Math.max(120,(series[series.length-1]||{t:0}).t*1.1):s.length_s;
+  chart($("c-worst"),{log:true,xMax:xm,hline:budget,markers:(s.migrations||[]).map(m=>m.t),series:[
+    {color:css('--m-measured'),points:series.map(r=>[r.t,r.worst_p95_ms])},
+    {color:css('--m-'+s.policy),dash:true,w:1.5,points:series.map(r=>[r.t,r.predicted_worst_ms])}]});
+  $("lg-nodes").innerHTML=NODES.map(n=>`<span><i style="background:${css('--n-'+n)}"></i>${n}</span>`).join("");
+  chart($("c-players"),{xMax:xm,yMin:0,yMax:100,series:NODES.map(n=>({color:css('--n-'+n),points:series.map(r=>[r.t,r.nodes[n].players])}))});
+  const sh=s.summary?.shadow||{};
+  $("shadow").innerHTML=MODELS.filter(m=>sh[m]).map(m=>{const x=sh[m];return `<tr><td><span class="sw" style="display:inline-block;margin-right:8px;background:${css('--m-'+m)}"></span>${MLABEL[m]}${m===s.policy?" (in control)":""}</td><td>${x.windows}</td><td>${fmtMs(x.median_abs_err_ms)}</td><td>${fmtMs(x.mae_ms)}</td><td>${f2(x.accuracy)}</td><td>${f2(x.precision)}</td><td>${f2(x.recall)}</td><td>${f2(x.f1)}</td></tr>`}).join("");
+  const tl=(s.log||[]).filter(e=>e.source==="terminal");
+  $("tlog").innerHTML=tl.map(e=>`<div class="ev ${e.kind}"><div class="t">t ${Math.round(e.t)} s</div><div class="x">${e.text.replace(/^terminal: /,"")}</div></div>`).join("");
+  const hh=ms=>{const d=new Date(ms);return d.toLocaleTimeString([], {hour12:false})+"."+String(d.getMilliseconds()).padStart(3,"0")};
+  $("raw").innerHTML=(s.raw||[]).map(r=>`<div><span class="ts">${hh(r.ts)}</span><span class="src">${r.src}</span><span class="${r.kind==="server"?"srv":""}">${r.text.replace(/</g,"&lt;")}</span></div>`).join("");
+  const log=s.log||[];
+  $("ev-n").textContent=log.length?log.length+" latest":"";
+  $("log").innerHTML=log.map(e=>{let d="";
+    if(e.kind==="migrate")d=`predicted worst ${fmtMs(e.predicted_worst_before)} to ${fmtMs(e.predicted_worst_after)}, mean ${fmtMs(e.predicted_mean_before)} to ${fmtMs(e.predicted_mean_after)}`;
+    else if(e.kind==="arrive")d=e.predicted_ms!=null?`predicted p95 on ${e.node}: ${fmtMs(e.predicted_ms)}`:"";
+    return `<div class="ev ${e.kind}"><div class="t">t ${Math.round(e.t)} s</div><div class="x">${e.text}</div>${d?`<div class="d">${d}</div>`:""}</div>`}).join("");
+}
+
+function connect(){
+  const ws=new WebSocket((location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws");
+  ws.onmessage=ev=>{last=JSON.parse(ev.data);if(!paused)renderLive(last)};
+  ws.onclose=()=>{if(last?.status==="running"){const up=$("updated");up.textContent="connection to the controller lost, retrying";up.style.color="var(--amber)"}setTimeout(connect,2000)};
+}
+connect();
+setInterval(()=>{if(last&&!paused)renderLive(last)},3000);
+
+async function options(){
+  try{const o=await (await fetch("/api/options")).json();
+    busy=o.busy; $("busy").textContent=o.busy?"testbed busy: a grid or deployment script is running":"";
+    $("b-start").disabled=o.busy||o.running;}catch{}
+}
+options(); setInterval(options,10000);
+$("b-start").addEventListener("click",async()=>{
+  $("ctl-msg").textContent="starting...";
+  const r=await fetch("/api/run",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({policy:$("f-pol").value,scenario:$("f-sc").value,arrival:$("f-ar").value})});
+  const j=await r.json(); $("ctl-msg").textContent=r.ok?`run ${j.run} started, ${Math.round(j.length_s)} s`:(j.detail||"could not start");
+});
+$("b-stop").addEventListener("click",async()=>{const r=await fetch("/api/stop",{method:"POST"});$("ctl-msg").textContent=r.ok?"stopping, disconnecting every match":"nothing to stop"});
+$("b-pause").addEventListener("click",e=>{paused=!paused;e.target.setAttribute("aria-pressed",paused);e.target.textContent=paused?"Resume view":"Pause view";if(!paused&&last)renderLive(last)});
+
+/* ---------- compare ---------- */
+const selected=new Set();
+async function loadRuns(){
+  const runs=await (await fetch("/api/runs")).json();
+  $("runs").innerHTML=runs.map(r=>`<tr data-run="${r.run}" class="${selected.has(r.run)?"sel":""}">
+    <td><label><input type="checkbox" ${selected.has(r.run)?"checked":""} aria-label="select ${r.run}"> ${r.run}</label></td>
+    <td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+r.policy)}"></span>${MLABEL[r.policy]}</td><td>${r.arrival||"-"}</td>
+    <td>${fmtMs(r.pooled_p95_ms)}</td><td>${fmtMs(r.pooled_p99_ms)}</td><td>${fmtMs(r.worst_p95_median_ms)}</td><td>${fmtMs(r.worst_p95_max_ms)}</td>
+    <td class="${(r.time_over_budget_share||0)>0.1?"crit":""}">${pctf(r.time_over_budget_share)}</td><td>${pctf(r.share_samples_over_budget)}</td>
+    <td>${r.migrations}</td><td>${r.migration_gap_mean_s==null?"-":r.migration_gap_mean_s.toFixed(1)+" s"}</td></tr>`).join("");
+  $("runs").querySelectorAll("input").forEach(cb=>cb.addEventListener("change",e=>{const id=e.target.closest("tr").dataset.run;
+    e.target.checked?selected.add(id):selected.delete(id);e.target.closest("tr").classList.toggle("sel",e.target.checked);drawCompare()}));
+  if(!selected.size&&runs.length){runs.slice(0,2).forEach(r=>selected.add(r.run));loadRuns();return}
+  drawCompare();
+}
+$("b-refresh").addEventListener("click",loadRuns);
+async function drawCompare(){
+  const ids=[...selected], pal=[css('--m-measured'),css('--amber'),css('--n-edge3'),css('--n-cloud')];
+  const det=await Promise.all(ids.map(id=>fetch("/api/runs/"+id).then(r=>r.json())));
+  const series=det.map((d,i)=>({color:d.summary?css('--m-'+d.summary.policy):pal[i%4],dash:i>1,points:d.timeline.map(r=>[r.t,r.worst_p95_ms])}));
+  $("lg-cmp").innerHTML=det.map((d,i)=>`<span><i style="background:${series[i].color}"></i>${MLABEL[d.summary?.policy]||ids[i]}</span>`).join("");
+  chart($("c-cmp"),{log:true,hline:100,series});
+}
+
+/* ---------- offline ---------- */
+let offLoaded=false;
+async function loadOffline(){
+  if(offLoaded)return; offLoaded=true;
+  const o=await (await fetch("/api/offline")).json();
+  const rtt={edge1:5.155,edge2:15.235,edge3:30.251,cloud:40.22};
+  $("lg-grid").innerHTML=NODES.map(n=>`<span><i style="background:${css('--n-'+n)}"></i>${n}</span>`).join("");
+  chart($("c-grid"),{log:true,xMax:100,xLabel:"pl",series:NODES.flatMap(n=>[
+    {color:css('--n-'+n),points:o.curves[n]},{color:css('--n-'+n),dash:true,w:1,points:[[0,rtt[n]],[100,rtt[n]]]}])});
+  $("dep").innerHTML=o.deployments.map(d=>{const pl=d.placement.split(",").map(x=>x.split("=")[1]).join("/");const m=+d.measured_worst_p95_ms;
+    return `<tr><td>${d.players}</td><td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+d.model)}"></span>${MLABEL[d.model]}</td><td>${pl}</td><td>${fmtMs(+d.predicted_worst_p95_ms)}</td><td class="${lvl(m,100)}">${fmtMs(m)}</td></tr>`}).join("");
+  const tests=[["Cross","cross-replicate, 50 cells"],["Held-out","held-out grid3, 25 cells"]];
+  $("met").innerHTML=tests.flatMap(([pre,label])=>{const cr=o.metrics.filter(r=>r.split.startsWith(pre));
+    if(!cr.length)return [];
+    return ["analytical","queueing","learned"].map((m,i)=>{const g=k=>cr.find(r=>r.model===m&&r.kind===k)||{};const r=g("regression"),c50=g("classification@50ms"),c100=g("classification@100ms");
+    return `<tr><td class="hint">${i?"":label}</td><td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+m)}"></span>${MLABEL[m]}</td><td>${fmtMs(+r.median_abs_err_ms)}</td><td>${fmtMs(+r.mae_ms)}</td><td>${f2(r.r2_log10)}</td><td>${f2(r.spearman_rho)}</td><td>${f2(c50.f1)}</td><td>${f2(c100.f1)}</td><td>${f2(c100.accuracy)}</td></tr>`})}).join("");
+}
+window.addEventListener("resize",()=>{if(last&&!paused)renderLive(last)});
+</script>
+</body>
+</html>
