@@ -167,7 +167,7 @@ matchmaker), each controller free to move one match every 10 s. One run each.
   the offline placement result, reproduced in closed loop.
 - **Queueing moves as often as learned but to the wrong place, once.** Its
   curve depends on utilization alone, so it rates edge2 at 80 players
-  (u = 0.8) at 27 ms. edge2's measured knee is between 80 and 100 players;
+  (u = 0.8) at 27 ms. edge2's measured knee is at 80 players (one grid replicate already at 2.7 s);
   live it sat at 1.8-3.4 s for about 200 s. The learned model predicts 65 ms
   for edge2 at 80, so it stopped edge2 at 70 and sent the overflow to edge3.
   This is the "one curve is not enough" effect of 08 §8.2 deciding a

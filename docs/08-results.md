@@ -71,7 +71,8 @@ The shape, on every node that reaches it, is flat, then a cliff:
 
 - **edge1** stays within 10 ms of its network RTT up to 40 players. At 60 it
   is 8.6 s. Tick time (MSPT): 4.2-5.0 ms at 40, 6.5 ms at 50, **46 ms at 60**.
-- **edge2** is flat to 60 players (23 ms), and breaks between 80 and 100. At 80
+- **edge2** is flat to 60 players (23 ms); its knee is at 80, and every
+  replicate breaks by 100. At 80
   the replicates disagree by 80x (34 vs 2 661 ms) - that is the knee itself, the
   load at which the tail is unstable from one run to the next.
 - **edge3 and cloud** never reach a knee within the 100-player ceiling. Their
@@ -119,7 +120,7 @@ Three models, one interface: `predict(node, players) -> p95 ms`
 - **analytical**: network RTT + 100 B / 1 Gb/s. No load term.
 - **queueing (M/M/1)**: RTT + s / (1 - u), u = players / (100 x cores). Its one
   parameter s is the median of `delay x (1 - u)` over stable training cells:
-  2.8 ms on this data. (A least-squares fit was tried first; a few multi-second
+  2.4 ms on this data. (A least-squares fit was tried first; a few multi-second
   tails dragged s to 1.4 s, so the model predicted 1.4 s on an idle node. The
   median is the most favourable fit of the form.)
 - **learned**: RTT + server delay predicted by gradient-boosted trees on
@@ -268,7 +269,7 @@ What this shows:
 2. **Both load-aware models fix it, and by about the same amount.** Their
    placements are nearly identical (both keep edge1 at 40) and measure within
    1-4 ms of each other. The learned model predicted its own deployments to
-   within 1-12 ms (14.0 → 26, 20.9 → 20, 31.6 → 32, 33.2 → 39); the
+   within 12 ms (14.0 → 26, 20.9 → 20, 31.6 → 32, 33.2 → 39); the
    analytical model predicted 5-15 ms for deployments that measured 18-30 s.
 3. **The learned model's advantage is in prediction, not in this decision.**
    It is the better predictor (§8.4), but for this testbed's ranking question a
@@ -289,7 +290,8 @@ learned model's answer on clean data, so they are not in the table above.
 ## 8.6 Limits - quote these with the results
 
 - **One host, three replicates.** Every node is a container on one laptop.
-  Three replicates give a spread, not a confidence interval. At the knees (edge1 at
+  The bootstrap intervals (8.4) cover the variation between cells, not between
+  whole replicates, of which there are three. At the knees (edge1 at
   50, edge2 at 80) the replicates disagree by 6-80x, so the exact player count
   of a knee is not established; that a knee exists, and roughly where, is.
 - **The host's power mode sets the servers' capacity.** A node capped at

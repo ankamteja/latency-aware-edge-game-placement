@@ -11,7 +11,6 @@
 \title{Load-Blind Latency Models Pick the Wrong Edge Node:\\
 A Measurement Study of Game Server Placement}
 
-% TODO: full registered names of all five authors, same order as agreed.
 \author{\IEEEauthorblockN{Ankam Charan Teja, Aranya Roy, Nikhil Kumar Reddy, Yashvardhan Deep, Akshit Singh}}
 
 \maketitle
@@ -38,8 +37,8 @@ held-out third replicate) but, on these scenarios, does not place better than
 the fitted closed form. Run as a live controller on the same schedule of
 players, the load-blind model never moves a match and its worst players sit
 at a median of 1.06\,s, queueing's at 166\,ms and the learned model's at
-33\,ms. When one node silently loses half its CPU, only a variant that
-corrects itself from live measurements moves players off it.
+33\,ms. When one node silently loses half its CPU, in our runs only a variant
+that corrects itself from live measurements moves players off it.
 \end{abstract}
 
 \section{Introduction}
@@ -198,7 +197,7 @@ uncontrolled load source.
 All three models predict p95 in-game latency for a node and a player count.
 \emph{Analytical}: (\ref{eq:analytical}) with a 100\,B message over 1\,Gb/s.
 \emph{Queueing}: RTT\,$+\,s/(1-u)$, $u$ = players\,/\,(100\,$\times$\,cores),
-with $s$ the median of delay\,$\times(1-u)$ over stable cells (2.8\,ms).
+with $s$ the median of delay\,$\times(1-u)$ over stable cells (2.4\,ms).
 \emph{Learned}: RTT plus a server delay predicted by gradient-boosted trees on
 utilization, players and cores.
 
@@ -209,8 +208,9 @@ Fig.~\ref{fig:grid} shows measured p95 per node against player count, with
 the analytical prediction drawn flat. Across all 50 grid cells ICMP p95 stays
 within 0.3\,ms of the configured RTT. edge1 stays within 10\,ms of its 5\,ms
 RTT up to 40 players and reaches 6.7--8.6\,s at 60, where its tick time jumps
-from 6.5 to 46\,ms. edge2 is flat to 60 players (23\,ms) and breaks between
-80 and 100. edge3 and cloud never reach a knee within 100 players. The tail
+from 6.5 to 46\,ms. edge2 is flat to 60 players (23\,ms); its knee is at 80
+players (one replicate already measured 2.7\,s there, the other two
+34--44\,ms) and every replicate breaks by 100. edge3 and cloud never reach a knee within 100 players. The tail
 leaves its flat region at edge1, 50 players, while mean tick time is still
 6.5\,ms, an eighth of the 50\,ms budget.
 
@@ -225,7 +225,7 @@ replicates) against the load-blind model's prediction (dashed).}
 Fig.~\ref{fig:layers} attributes the delay. On edge1, from 1 to 60
 players, the ICMP p95 stays at 5.1--5.3\,ms and the TCP handshake at
 5.3--5.4\,ms; the server-list status ping, answered by the server process
-outside the game loop, moves only at 60 players (16 to 30\,ms); the in-game
+outside the game loop, moves only at 60 players (16 to 32\,ms); the in-game
 round trip, which waits for the game thread, goes from 6\,ms to
 6.7--8.6\,s. The network term the formula models is the one term that does
 not move.
@@ -334,7 +334,7 @@ players wait 18--30\,s, about 510 to 1500 times longer than under either
 load-aware placement. Both load-aware
 models keep edge1 at 40 players and spread the rest; their placements measure
 within 4\,ms of each other, and the learned model's predictions of its own
-deployments are within 1--12\,ms. On these scenarios the learned model's
+deployments are within 12\,ms. On these scenarios the learned model's
 advantage is in prediction, not in the placement decision: a correctly fitted
 closed form reaches almost the same placement.
 
@@ -453,8 +453,9 @@ cost factor for edge1 (true value after the cut: 2).}
 \textbf{When the formula is enough.} Below a node's knee the analytical model
 is within tens of milliseconds, and the ranking it produces is right: every
 node's in-game p95 stays within about 20\,ms of its network RTT. The formula fails
-in one regime, past the knee, and there it fails by three orders of
-magnitude, not by a margin a tolerance band could absorb. A placement
+in one regime, past the knee, and there it fails by two to three orders
+of magnitude (330$\times$ for one match, 510--1500$\times$ for the deployed
+placements), not by a margin a tolerance band could absorb. A placement
 algorithm evaluated only on lightly loaded scenarios, as simulator studies
 usually are, will never see it.
 
@@ -463,13 +464,13 @@ than the node's size and its current player count. The deployed placements
 show that a closed form with one fitted parameter is enough to avoid the
 failure at the four offline scenarios. Live, the same form loaded edge2 past
 its knee because utilization alone does not capture how per-player cost
-grows with the number of players; the learned model's accuracy is what kept
-it off. Accuracy matters most where a budget has to be checked near a knee,
+grows with the number of players; in that run the learned model's more
+accurate curve kept it off. Accuracy matters most where a budget has to be checked near a knee,
 not where nodes are only ranked. The
 live runs add a requirement no offline model meets: capacity is not a
 constant. A setting on the host cut it threefold in our own rig (Section~\ref{sec:threats}), and
-a CPU cut no model was told about was handled only by a controller that kept
-comparing its predictions with what it measured.
+in our runs a CPU cut no model was told about was handled only by a
+controller that kept comparing its predictions with what it measured.
 
 \textbf{Reproducibility.} The repository holds the topology, every raw
 measurement stream of every cell (including the discarded runs and the
@@ -480,8 +481,9 @@ each artefact from the raw data.
 
 \section{Threats to Validity}\label{sec:threats}
 
-\textbf{One host, three replicates.} All nodes share one laptop; three replicates
-give a spread, not a confidence interval. At the knees the replicates differ
+\textbf{One host, three replicates.} All nodes share one laptop; the bootstrap
+intervals in Section~IV cover the variation between cells, not between
+whole replicates, of which there are only three. At the knees the replicates differ
 by 6--80$\times$, so the exact player count of a knee is not established.
 
 \textbf{Host power mode.} A node capped at half a core runs in short
@@ -514,7 +516,7 @@ learned from measurements predicts latency best; at the four offline
 scenarios a fitted M/M/1 term already placed as well, but run live on the
 same schedule it loaded a node past its knee (median 166\,ms) where the
 learned controller kept the worst players at a median of 33\,ms and the
-load-blind one never moved a match. A node that silently slows down is
+load-blind one never moved a match. In our runs a node that silently slowed down was
 handled only by a model that keeps learning from measurements and
 remembers the loads it has seen fail. The practical
 lesson is
