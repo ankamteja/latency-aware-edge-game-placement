@@ -61,18 +61,24 @@ shadow*), whichever one is in control.
 3. **Measure.** Per node, p50 and p95 of the last 10 s of samples. The worst
    node's p95 is the worst-off players' latency, the number the controller
    tries to keep low.
-4. **Predict.** Every model (analytical, queueing, learned) predicts p95 for
-   every node at its current player count. Only the model in control acts;
-   the other two are scored in shadow.
-5. **Decide** (every 10 s). Consider moving each match to each other node.
+4. **Predict.** Every model (analytical, queueing, learned, learned corrected
+   live) predicts p95 for every node at its current player count. Only the
+   model in control acts; the others are scored in shadow, on every window of
+   10 s of unchanged load.
+5. **Learn** (learned corrected live only). A node's window updates the live
+   model's cost factor and its memory of violations only once the node's
+   load has been unchanged for 30 s (`OBSERVE_SETTLE_S`): the first 10-25 s
+   after a match arrives or moves are its players logging in, which is not
+   the node's capacity (06 §6.21).
+6. **Decide** (every 10 s). Consider moving each match to each other node.
    Take the single best move if it lowers the predicted worst p95 by at least
    10 ms and by 20 %, or, with the worst unchanged, lowers the players'
    average predicted p95 by 3 ms. A match that just moved stays put for 60 s.
-6. **Migrate.** Stop the match on node A, start it on node B.
-7. **Publish.** The state goes to the dashboard over a WebSocket once a second
+7. **Migrate.** Stop the match on node A, start it on node B.
+8. **Publish.** The state goes to the dashboard over a WebSocket once a second
    and to `results/live/<run>/` on disk.
 
-The three gains in step 5 are hysteresis: without them a match would bounce
+The three gains in step 6 are hysteresis: without them a match would bounce
 between two nodes on noise. They are in `live/policy.py` (`Gains`) and every
 run records the values it used in `meta.json`.
 

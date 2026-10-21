@@ -579,3 +579,49 @@ players or the server changed, and the smallest node's capacity fell
 threefold. A latency formula cannot see it; a model fitted on measurements
 taken in one mode is wrong in the other. It is the same blind spot the
 project is about, found in the measurement rig itself.
+
+## 6.20 Part of a replicate cost 1.3-1.6x the CPU, in Performance mode
+
+**Symptom.** `grid4` (2026-10-21 17:54) passed `verify.sh`, power mode was
+`throughput-performance` and the charger was in, yet edge1 used 20.2 / 33.6 /
+41.1% CPU at 20 / 30 / 40 players against 14-15 / 21-22 / 30-31% in grids 1-3,
+and edge2 54 / 96% at 60 / 80 against 41-47 / 74-78%. edge3 and cloud,
+measured later in the same replicate, matched the earlier grids.
+
+**Diagnosis.** Compare every cell's CPU at a fixed player count with the
+earlier replicates (the median `cpu_percent` of `server.csv` rows at full
+load). `top` during the run showed a browser at about 40% CPU and `kswapd0`
+active, and analysis scripts (figures, deck builds) had been run during the
+edge1 and edge2 cells. The servers sit on their own cores, but the client
+generating the load and the host's memory do not.
+
+**Fix.** The contended cells were moved to `results/raw/grid4-contended`
+(kept as evidence) and edge1 and edge2 re-measured on an idle host with the
+browser closed: `NODES="edge1 edge2" controller/grid.sh grid4`
+(`grid.sh` now takes a `NODES` override). The re-measured edge1 is within
+about 10-15% of grids 1-3, edge2 matches them. Rule: nothing heavier than a
+text editor runs on the host while a grid, a deployment or a live run is
+measuring, and each new replicate is checked cell by cell against the
+earlier ones before it enters the dataset.
+
+## 6.21 The live model learned from players logging in
+
+**Symptom.** In two of three capacity-drop runs the live-corrected model
+had already rated edge1 2.2-3.1 times slower than the grid before its CPU
+was cut, and had moved almost every match off it, so those runs could not
+show the cut being noticed.
+
+**Diagnosis.** The cost factor `c` in `timeline.jsonl` jumped from 1.0 to
+1.9 at t = 12 s, with only the first 10 players on edge1 and their p95 at
+16-69 ms. A window was used 10 s after the node's load last changed, but a
+match takes about 6 s to log in and its first 10-25 s are join spikes, so
+the model learned from logins. Every later arrival landed on edge1 (the
+nearest node) and repeated it.
+
+**Fix.** The live model now learns only from windows at least 30 s after the
+node's load last changed (`OBSERVE_SETTLE_S` in `live/controller.py`,
+recorded as `observe_settle_s` in every run's `meta.json`). Shadow scoring
+of every model still uses every 10 s window, so it stays comparable with the
+earlier runs. Runs before the change are reported as their own versions
+(`live/summarize.py` `label`): "first version" (no violation memory),
+"before the settle rule", and the current one.
