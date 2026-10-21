@@ -18,14 +18,18 @@ def main():
         s = json.load(r)
     if "nodes" not in s:
         sys.exit("no run in progress")
-    print(f"run {s['run']}  t={s['t']:.0f}s  controller={s['policy']}  status={s['status']}")
-    print(f"{'node':6} {'players':>7} {'tick':>8} {'p95':>8} {'learned':>9} {'formula':>9}  matches")
+    pol = s["policy"]
+    print(f"run {s['run']}  t={s['t']:.0f}s  controller={pol}  status={s['status']}")
+    print(f"{'node':6} {'players':>7} {'tick':>8} {'p95':>8} {'predicted':>10} {'formula':>8}  matches")
     for n, d in s["nodes"].items():
         tick = "-" if d["mspt_ms"] is None else f"{d['mspt_ms']:.1f} ms"
         p = d["predicted"]
-        print(f"{n:6} {d['players']:>7} {tick:>8} {ms(d['p95_ms']):>8} {ms(p.get('learned')):>9} "
-              f"{ms(p.get('analytical')):>9}  {' '.join(f'm{m:02d}' for m in d['matches'])}")
-    for e in s.get("log", [])[:5]:
+        cut = d.get("quota_cores")
+        note = f"  CPU cut to {cut:g} of {d['cores']:g}" if cut is not None and abs(cut - d["cores"]) > 0.01 else ""
+        print(f"{n:6} {d['players']:>7} {tick:>8} {ms(d['p95_ms']):>8} {ms(p.get(pol)):>10} "
+              f"{ms(p.get('analytical')):>8}  {' '.join(f'm{m:02d}' for m in d['matches'])}{note}")
+    print("predicted = what the controller's model expects at this load; formula = the load-blind model")
+    for e in s.get("log", [])[:6]:
         print(f"  t={e['t']:>6.0f}s  {e['text']}")
 
 

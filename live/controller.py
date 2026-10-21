@@ -60,6 +60,7 @@ SCENARIOS = {
     # dashboard) and the run lasts until it is stopped
     "manual": dict(peak=0, arrive_every=0, hold=0, low=0, depart_every=0, tail=4 * 3600, seed=7),
 }
+JOIN_GAP_S = 5.0          # live/load.sh join: one match arrives every this many s
 MAX_MATCHES = 16          # usernames bot0..bot159 are opped on every server
 
 
@@ -154,6 +155,7 @@ class Run:
         self.stop_flag = threading.Event()
         self.commands = queue.Queue()     # operator load, applied on the next tick
         self.capacity_changed = set()     # nodes whose CPU quota this run changed
+        self.joining = []                 # (due time, source): matches still to arrive
         self.status = "starting"
         self.t0 = None
         self._closed_gaps = []       # migration gaps of matches that have left
@@ -204,12 +206,7 @@ class Run:
         whatever the policy would choose - the way a flash crowd or a
         careless matchmaker lands load. The controller then reacts."""
         load, placed = self.load(), 0
-        # never an id the schedule starts later: two processes would share
-        # one tag, one CSV and ten usernames
-        scheduled = {mid for t, kind, mid in self.events
-                     if kind == "arrive" and t >= self.elapsed()}
-        free = [i for i in range(MAX_MATCHES) if i not in self.matches and i not in scheduled]
-        for mid in free[:count]:
+        for mid in self.free_ids()[:count]:
             if load[node] + SIZE > CAPACITY:
                 break
             try:
@@ -224,6 +221,37 @@ class Run:
         self.note("overload", f"{source}: added {placed * SIZE} bots ({placed} match"
                   f"{'es' if placed != 1 else ''}) on {node}",
                   node=node, requested=count, placed=placed, source=source)
+
+    def free_ids(self):
+        """Match ids free now. Never an id the schedule starts later: two
+        processes would share one tag, one CSV and ten usernames."""
+        scheduled = {mid for t, kind, mid in self.events
+                     if kind == "arrive" and t >= self.elapsed()}
+        return [i for i in range(MAX_MATCHES) if i not in self.matches and i not in scheduled]
+
+    def join(self, count, source="dashboard"):
+        """Operator command: `count` new matches arrive and the controller's
+        own model chooses each one's node, the way a load-aware matchmaker
+        would: the node that leaves the lowest predicted worst-player p95."""
+        for mid in self.free_ids()[:count]:
+            load = self.load()
+            node = self.policy.place(load, SIZE)
+            if node is None:
+                self.note("reject", f"{source}: no room for another match on any node")
+                return
+            pred = self.policy.predict(node, load[node] + SIZE)
+            try:
+                path = tb.start_match(self.id, mid, node, 0)
+            except Exception as e:
+                self.note("reject", f"match {mid} could not start: {e}")
+                return
+            self.matches[mid] = Match(mid, node, 0, 0.0, tb.Tail(path))
+            self.load_since[node] = time.time()
+            others = ", ".join(f"{n} {self.policy.predict(n, load[n] + SIZE):.0f}"
+                               for n in self.policy.order if n != node and load[n] + SIZE <= CAPACITY)
+            self.note("arrive", f"{source}: match {mid} placed on {node} by the {self.policy.name} "
+                      f"model, predicted {pred:.0f} ms (other nodes: {others} ms)",
+                      node=node, predicted_ms=round(pred, 1), source=source)
 
     def unload(self, count, node=None, source="dashboard"):
         mids = sorted((m.mid for m in self.matches.values() if node in (None, m.node)), reverse=True)
@@ -267,6 +295,14 @@ class Run:
             src = cmd.get("source", "dashboard")
             if cmd["action"] == "add":
                 self.overload(cmd["node"], cmd["matches"], src)
+            elif cmd["action"] == "join":
+                # one match every JOIN_GAP_S, as players arrive in practice; a
+                # burst of logins would itself overload the node they land on
+                start = max([time.time()] + [t for t, _ in self.joining])
+                self.joining += [(start + i * JOIN_GAP_S, src) for i in range(cmd["matches"])]
+                self.note("join", f"{src}: {cmd['matches'] * SIZE} players arriving, one match "
+                          f"every {JOIN_GAP_S:g} s; the {self.policy.name} model places each",
+                          source=src)
             elif cmd["action"] == "remove":
                 self.unload(cmd["matches"], cmd.get("node"), src)
             elif cmd["action"] == "throttle":
@@ -493,6 +529,9 @@ class Run:
                     else:
                         self.depart(mid)
                 self.apply_commands()
+                while self.joining and self.joining[0][0] <= time.time():
+                    _, src = self.joining.pop(0)
+                    self.join(1, src)
                 self.read_samples()
                 if t - last_server >= SERVER_EVERY_S:
                     self.read_servers()

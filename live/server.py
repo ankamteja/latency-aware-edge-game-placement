@@ -10,6 +10,7 @@
   POST /api/load            operator load: {"action": "add", "node", "matches"}
                             or {"action": "remove", "matches"[, "node"]}
                             or {"action": "throttle", "node", "cores"} / "restore"
+                            or {"action": "join", "matches"}: the model places them
   GET  /api/runs            summaries of every finished run
   GET  /api/runs/{id}       one run's summary, timeline and migrations
   GET  /api/offline         grid curves, deployed placements, model metrics
@@ -44,7 +45,7 @@ start_lock = threading.Lock()       # check-and-start must be one step
 
 
 class LoadRequest(BaseModel):
-    action: str = "add"          # add | remove | throttle | restore
+    action: str = "add"          # add | join | remove | throttle | restore
     node: str | None = None
     matches: int = 1
     cores: float | None = None   # throttle: the node's new CPU quota
@@ -155,9 +156,9 @@ def api_load(req: LoadRequest):
     r = current["run"]
     if not r or not running():
         raise HTTPException(409, "no run in progress: start one (manual scenario for operator load)")
-    if req.action not in ("add", "remove", "throttle", "restore") or not 1 <= req.matches <= 16:
-        raise HTTPException(400, "action must be add, remove, throttle or restore; matches 1 to 16")
-    if req.action != "remove" and req.node not in r.nodes:
+    if req.action not in ("add", "join", "remove", "throttle", "restore") or not 1 <= req.matches <= 16:
+        raise HTTPException(400, "action must be add, join, remove, throttle or restore; matches 1 to 16")
+    if req.action not in ("remove", "join") and req.node not in r.nodes:
         raise HTTPException(400, "needs a node: edge1, edge2, edge3 or cloud")
     if req.action == "throttle" and not (req.cores and 0.05 <= req.cores <= r.nodes[req.node]["cores"]):
         raise HTTPException(400, "throttle needs cores between 0.05 and the node's own cores")
