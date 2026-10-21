@@ -197,3 +197,10 @@ class Tail:
             if math.isfinite(rtt):
                 out.append((int(parts[0]), parts[1], rtt))
         return out
+
+
+def power_mode():
+    """The host's tuned profile; the grid was measured under
+    throughput-performance (docs/08 8.6)."""
+    out = sh(["tuned-adm", "active"]).strip()
+    return out.rsplit(" ", 1)[-1] if out else None

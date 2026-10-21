@@ -139,6 +139,12 @@ TODO after the live runs.
   upper bound on what a player sees.
 - The controller moves at most one match every 10 s. A flash crowd larger
   than that drains slowly; the rate is a choice, recorded in `meta.json`.
-- The learned model was fitted offline on the grid and is not updated during
-  a run. It sees players and cores, not live tick time or CPU.
+- `learned` is fitted offline on the grid and never updated during a run.
+  `learned-live` corrects it from measured windows, but only through one
+  number per node (how much more each player costs) bounded to 0.5-4x; a
+  change that alters the curve's shape rather than its scale is fitted only
+  approximately. Neither sees tick time or CPU directly.
+- The models were fitted with the host in Performance power mode. Run the live
+  system in the same mode (`topology/verify.sh` checks it); in Balanced mode
+  every node is 2-3x slower than every offline model believes (08 §8.6).
 - One host. Everything in docs/08-results.md 8.6 applies.

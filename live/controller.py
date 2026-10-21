@@ -452,6 +452,12 @@ class Run:
             self.note("capacity", f"{n} CPU was {q:g} cores from an earlier run, "
                       f"restored to {spec['cores']:g}", node=n, cores=spec["cores"],
                       source="startup")
+        prof = tb.power_mode()
+        if prof != "throughput-performance":
+            self.note("reject", f"host power mode is {prof or 'unknown'}, not Performance: every "
+                      "node is slower than the models were fitted on (docs/08 8.6)")
+        meta["power_mode"] = prof
+        write_atomic(self.dir / "meta.json", json.dumps(meta, indent=2))
         # same gate as every grid cell: nothing from a previous run attached
         self.status = "waiting for empty servers"
         counts = []
