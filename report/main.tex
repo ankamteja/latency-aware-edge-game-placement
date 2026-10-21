@@ -240,7 +240,10 @@ error. Fitted on three nodes and tested on the fourth, the learned model
 transfers best to edge1, edge3 and cloud, and the queueing model to edge2.
 On a third replicate measured hours later and never used in any fit (25
 cells), the ranking holds: median error 1.2\,ms learned, 2.3\,ms queueing,
-6.9\,ms analytical. Asked whether a cell breaks a 50\,ms budget, the learned
+6.9\,ms analytical. A paired bootstrap over cells (2000 resamples) puts the
+learned model's cross-replicate median error at 0.9\,ms [0.3, 1.5] against
+queueing's 1.8\,ms [1.6, 5.0], lower in every resample; on the 25 held-out
+cells it is lower in 95\%. Asked whether a cell breaks a 50\,ms budget, the learned
 model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
 the analytical model 0, since it never predicts a violation.
 

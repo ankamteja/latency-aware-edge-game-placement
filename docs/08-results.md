@@ -171,6 +171,23 @@ F1 scores move by 0.1-0.3 per cell. `grid3` also reproduces the knees: edge1
 between 40 (15 ms) and 50 players (409 ms), edge2 between 80 (44 ms) and 100
 (25.8 s), edge3 and cloud none up to 100.
 
+**How sure are these?** `python -m model.uncertainty` resamples the test
+cells with replacement 2000 times and scores every model on the same
+resample (`results/model/uncertainty.md`). Median absolute error, 95%
+interval:
+
+| test | analytical | queueing | learned | learned better than queueing in |
+|---|---|---|---|---|
+| cross-replicate, 50 cells | 5.8 [2.9, 8.9] ms | 1.8 [1.6, 5.0] ms | **0.9 [0.3, 1.5] ms** | 100% of resamples, difference -0.9 [-3.7, -0.6] ms |
+| held-out grid3, 25 cells | 6.9 [2.6, 15.7] ms | 2.3 [1.3, 12.5] ms | **1.2 [0.8, 3.7] ms** | 95%, difference -1.1 [-9.6, +0.3] ms |
+
+The learned model's lead in accuracy holds across resamples; on the smaller
+held-out set its interval against queueing just touches zero. The F1
+intervals are wide (cross-replicate F1 at 50 ms: learned 0.83 [0.62, 0.97],
+queueing 0.56 [0.20, 0.80]) because only 3-12 cells break a budget, which is
+why the F1 comparisons below are called indicative. Cells on one node's
+ladder are not independent, so the true intervals are wider still.
+
 **Every standard score.** The models are regressors, so accuracy and F1 only
 exist once the prediction is turned into a decision. The decision placement
 makes is "will this node break a latency budget at this load?" - positive =
@@ -322,6 +339,7 @@ python3 dataset/build_dataset.py --tags grid1,grid2,grid3,place1
 python3 -m placement.experiment score --tag place1
 python3 -m model.evaluate                   # results/model/
 python3 -m model.metrics                    # results/model/metrics.md
+python3 -m model.uncertainty                # results/model/uncertainty.md
 python3 -m model.figures                    # figures/
 ```
 
