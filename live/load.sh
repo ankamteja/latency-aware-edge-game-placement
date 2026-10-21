@@ -10,8 +10,8 @@
 #   live/load.sh throttle edge1 0.25  cut edge1's CPU to 0.25 cores, tell no model
 #   live/load.sh restore edge1      give edge1 its own CPU back
 #   live/load.sh status             players, tick time and p95 per node, now
-#   live/load.sh start [model]      start a manual session (model: learned,
-#                                   analytical or queueing; default learned)
+#   live/load.sh start [model]      start a manual session (model: learned-live,
+#                                   learned, queueing or analytical; default learned)
 #   live/load.sh stop               end the session, disconnect every bot
 set -euo pipefail
 API=http://127.0.0.1:8090

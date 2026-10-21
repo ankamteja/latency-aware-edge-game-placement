@@ -222,9 +222,11 @@ input[type=number]{background:var(--panel2);border:1px solid var(--line);border-
       <div class="card">
         <div class="ch"><span class="ct">Terminal</span><span class="hint">type these in a shell</span></div>
         <div class="cb">
-          <pre class="term" aria-label="Commands">live/load.sh start learned
+          <pre class="term" aria-label="Commands">live/load.sh start learned-live
 live/load.sh add edge1 60
 live/load.sh status
+live/load.sh throttle edge1 0.25
+live/load.sh restore edge1
 live/load.sh remove 20
 live/load.sh stop</pre>
           <div class="biglbl mt">received from the terminal</div>
@@ -460,6 +462,10 @@ function renderLive(s){
     +(stale?`, no new data for ${Math.round(age)} s`:""):"";
   up.style.color=stale?"var(--amber)":"var(--muted)";
   $("b-start").disabled=running||busy; $("b-stop").disabled=!running;
+  // while a run is going the form shows that run, not the next one
+  for(const [id,v] of [["f-pol",s.policy],["f-sc",s.scenario],["f-ar",s.arrival]]){
+    const el=$(id); if(running&&v){el.value=v} el.disabled=running;
+  }
   if(!s.nodes){
     const spec={edge1:[0.5,5.155],edge2:[1,15.235],edge3:[2,30.251],cloud:[4,40.22]};
     const idle={};NODES.forEach(n=>idle[n]={cores:spec[n][0],rtt_ms:spec[n][1],players:0,matches:[],predicted:{}});
