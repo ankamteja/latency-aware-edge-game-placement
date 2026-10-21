@@ -24,7 +24,8 @@ only), staggered join, 90 s steady window. Only the steady window is analysed.
 
 Conditions, all checked by `topology/verify.sh` before each run:
 
-- netem RTT 5.1 / 15.1 / 30.1 / 40.1 ms (edge1 / edge2 / edge3 / cloud)
+- RTT 5.2 / 15.2 / 30.3 / 40.2 ms (edge1 / edge2 / edge3 / cloud), measured with
+  ping at bring-up (`placement/nodes.json`); within 0.3 ms of that in every cell
 - CPU quota 0.5 / 1 / 2 / 4 cores on disjoint cpusets
 - warm worlds, server heaps unable to swap
 - bots split 10 per process, so the client is not in the measurement (§6.16)
@@ -51,7 +52,7 @@ model is fitted on `grid1` and `grid2`; `grid3` is used only as a test set.
 p95 in-game round-trip time, ms, both replicates (`grid1 / grid2`). The network
 round trip the analytical model predicts is in the header.
 
-| players | edge1 (5.1 ms) | edge2 (15.1 ms) | edge3 (30.1 ms) | cloud (40.1 ms) |
+| players | edge1 (5.2 ms) | edge2 (15.2 ms) | edge3 (30.3 ms) | cloud (40.2 ms) |
 |---|---|---|---|---|
 | 1 | 6 / 6 | 17 / 16 | 31 / 31 | 41 / 41 |
 | 10 | 6 / 8 | | | |
