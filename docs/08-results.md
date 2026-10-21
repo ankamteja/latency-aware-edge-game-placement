@@ -243,8 +243,9 @@ deployment.
 What this shows:
 
 1. **The load-blind placement fails catastrophically, and confidently.** It
-   predicts 5-15 ms for every scenario and puts everyone on the nearest node.
-   From 80 players the worst-off players wait 18-30 seconds - 570-1500x worse
+   predicts 5-15 ms for every scenario and fills the nearest node to its
+   100-player cap before using the next. From 80 players the worst-off players
+   wait 18-30 seconds - about 510-1500x worse
    than either load-aware placement, on the same hardware, the same links and
    the same players.
 2. **Both load-aware models fix it, and by about the same amount.** Their

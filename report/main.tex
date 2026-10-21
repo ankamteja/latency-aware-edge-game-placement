@@ -25,8 +25,8 @@ evaluated in simulators built on the same model, the error does not show. We
 measure it. On an emulated four-node edge--cloud testbed (0.5, 1, 2 and 4
 cores at 5, 15, 30 and 40\,ms round-trip time) running a real multiplayer
 game server and up to 160 protocol-level bot players, we record network,
-transport, server-process and in-game latency concurrently. The network round
-trip never moves by more than 0.3\,ms, while the 95th-percentile in-game
+transport, server-process and in-game latency concurrently. The ICMP round
+trip never moves more than 0.3\,ms from its configured value, while the 95th-percentile in-game
 latency of the smallest node rises from 15\,ms at 40 players to 6.7--8.6\,s at
 60. We fit a closed-form M/M/1 model and a gradient-boosted tree model to
 two replicates of the load grid, compute each model's optimal placement for
@@ -37,7 +37,7 @@ best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
 held-out third replicate) but, on these scenarios, does not place better than
 the fitted closed form. Run as a live controller on the same schedule of
 players, the load-blind model never moves a match and its worst players sit
-at a median of 1.06\,s; the learned model keeps them at 33\,ms. When one node
+at a median of 1.06\,s; the learned model keeps them at a median of 33\,ms. When one node
 silently loses half its CPU, only a variant that corrects itself from live
 measurements moves players off it.
 \end{abstract}
@@ -76,8 +76,8 @@ This paper measures that error instead of modelling it. Our contributions:
   \item an end-to-end comparison in which each latency model's optimal
         placement is deployed and measured, so models are graded by a clock
         rather than by each other;
-  \item a live placement controller on the same testbed, run under each
-        model on the same schedule of players, including a node that loses
+  \item a live placement controller on the same testbed, run under the
+        load-blind and the learned model on the same schedule of players, including a node that loses
         half its CPU mid-run without any model being told.
 \end{itemize}
 
@@ -155,8 +155,10 @@ CPU and player count are sampled every 5\,s from the server.
 \subsection{Protocol}
 Each grid cell is one node at one load: 20\,s settle, 15\,s idle baseline,
 staggered joins, 90\,s steady window; only the steady window is analysed.
-edge1 is swept at 1--60 players, the others at 1--100. The grid is run
-twice, the second time in reverse node order. Before collection the worlds are
+edge1 is measured at 1, 10, 20, 30, 40, 50 and 60 players, the others at 1,
+20, 40, 60, 80 and 100. The grid is run three times: twice to fit on (the
+second in reverse node order) and a third time, hours later on a restarted
+testbed, held out for testing. Before collection the worlds are
 warmed, server heaps are prevented from swapping, and the game's day/night
 cycle, weather and hostile mobs are frozen: with the cycle running, a single
 player at night put edge1 14\,s behind, so a cell's time of day was an
@@ -199,8 +201,8 @@ measured load.
 
 \subsection{Prediction error}
 Table~\ref{tab:pred} fits each model on one replicate and predicts the other.
-The learned model is the most accurate; the queueing model is accurate in the
-flat region but its $1/(1-u)$ term explodes near the knee, giving a large mean
+The learned model has the lowest median and mean error; the queueing model is
+accurate in the flat region but its $1/(1-u)$ term explodes near the knee, giving a large mean
 error. Fitted on three nodes and tested on the fourth, the learned model
 transfers best to edge1, edge3 and cloud, and the queueing model to edge2.
 On a third replicate measured hours later and never used in any fit (25
@@ -253,9 +255,10 @@ players & analytical & queueing & learned \\
 \end{table}
 
 \textbf{Result.} Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}. The
-analytical model predicts 5--15\,ms for every scenario and puts everyone on
-the nearest node; from 80 players its worst players wait 18--30\,s, 570 to
-1500 times longer than under either load-aware placement. Both load-aware
+analytical model predicts 5--15\,ms for every scenario and fills the nearest
+node to its 100-player cap before using the next; from 80 players its worst
+players wait 18--30\,s, about 510 to 1500 times longer than under either
+load-aware placement. Both load-aware
 models keep edge1 at 40 players and spread the rest; their placements measure
 within 4\,ms of each other, and the learned model's predictions of its own
 deployments are within 1--12\,ms. On these scenarios the learned model's
@@ -273,10 +276,10 @@ closed form reaches almost the same placement.
 
 The deployments above are static: one placement, measured once. We also ran
 placement as a controller on the live testbed. Every 2\,s it reads every
-bot's latency samples and every server's player count, tick time and CPU;
-every 10\,s it may move one match (ten players) to the node that lowers the
-predicted worst-player p95 by at least 10\,ms and 20\%, with a 60\,s
-cooldown per match. A move stops the match on one server and starts it on
+bot's latency samples, and every 5\,s every server's player count, tick time
+and CPU; every 10\,s it may move one match (ten players) if the move lowers
+the predicted worst-player p95 by at least 10\,ms and 20\%, or leaves it
+unchanged and lowers the mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
 another, so its players reconnect. New matches land on the nearest node with
 room, as a distance-based matchmaker would place them, so two runs differ only
 in the model that drives the controller.
@@ -376,8 +379,9 @@ where a load-aware placement measured 20--39\,ms on the same hardware. A model
 learned from measurements predicts latency best, while on these scenarios a
 fitted M/M/1 term already makes the right placement. Run live on the same
 schedule, a load-blind controller never moves a match while a load-aware one
-keeps the worst players near 33\,ms, and a node that silently slows down is
-caught only by a model that keeps learning from measurements. The practical
+keeps the worst players at a median of 33\,ms, and a node that silently slows
+down is handled only by a model that keeps learning from measurements and
+remembers the loads it has seen fail. The practical
 lesson is
 that the latency term in placement must see load, and that its shape is
 better measured than assumed. Future work: more replicates on dedicated

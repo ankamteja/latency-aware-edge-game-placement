@@ -163,8 +163,8 @@ RTT, ms:
 | 120 | **17 758** | 31 | 32 |
 | 160 | **19 990** | 35 | 39 |
 
-The analytical model predicted 5-15 ms for every one of those and put everyone
-on the nearest node. Both load-aware models keep edge1 at 40 players and spread
+The analytical model predicted 5-15 ms for every one of those and filled the
+nearest node to its 100-player cap before using the next. Both load-aware models keep edge1 at 40 players and spread
 the rest; their placements measure within a few ms of each other.
 
 **The network is flat; the game thread is not.** ICMP never moved more than
