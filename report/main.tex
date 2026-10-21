@@ -77,8 +77,9 @@ This paper measures that error instead of modelling it. Our contributions:
         placement is deployed and measured, so models are graded by a clock
         rather than by each other;
   \item a live placement controller on the same testbed, run under the
-        load-blind and the learned model on the same schedule of players, including a node that loses
-        half its CPU mid-run without any model being told.
+        load-blind, queueing and learned models on the same schedule of
+        players, and a test in which a node loses half its CPU mid-run
+        without any model being told.
 \end{itemize}
 
 \textbf{Terms.} The \emph{round-trip time} (RTT) is the time a message takes
@@ -142,9 +143,9 @@ rather than compare only against (\ref{eq:analytical}).
 
 \subsection{Topology}
 Five containers on one host are wired by containerlab: a client node and four
-candidate servers. Distance is emulated with Linux \texttt{netem}, half the
-target delay on each end of each link; compute is capped with a cgroup CPU
-quota on disjoint CPU sets. Table~\ref{tab:nodes} lists the nodes; the RTT is
+candidate servers. Linux \texttt{netem} adds the network delay, split evenly
+between the two ends of each link, and each server's CPU is limited by a
+cgroup quota on cores no other container uses. Table~\ref{tab:nodes} lists the nodes; the RTT is
 measured with \texttt{ping}, not assumed. Every server runs the same Paper
 1.21.4 Minecraft server and the same pre-generated world. The trade-off is
 deliberate: the nearest node is the weakest.
@@ -169,9 +170,10 @@ cloud & 4 cores  & 40.1 ms \\
 Players are mineflayer bots that speak the real game protocol: each walks,
 turns, and sends one timestamped chat message per second. The chat echo gives
 an in-game round-trip time through the server's main game thread. Bots run at
-most ten per process; with one process for all bots, the broadcast fan-out
-($N^2$ messages per second) saturated the client and its event-loop delay was
-recorded as server latency.
+most ten per process. Every chat message is delivered to every player, so
+$N$ players produce about $N^2$ deliveries per second; with one process for
+all bots this overloaded the client, and the client's own delay was recorded
+as server latency.
 
 \subsection{Measurement ladder}
 Four latencies are measured concurrently on the same path, under the same
@@ -232,7 +234,8 @@ not move.
 \centering
 \includegraphics[width=\columnwidth]{fig3_layers_edge1.png}
 \caption{The four probes on edge1 under rising load, measured concurrently
-on the same path. Only the probe that waits for the game thread degrades.}
+on the same path. Only the probe that waits for the game thread degrades by
+orders of magnitude.}
 \label{fig:layers}
 \end{figure}
 
@@ -256,28 +259,34 @@ utilization, all grid cells. Nodes of different size do not share one curve.}
 \subsection{Rank inversion}
 For a single match, the analytical model always picks edge1. That is correct
 up to 40 players (edge1 14.5\,ms, edge2 21\,ms) and wrong at 60, where edge1
-measures 7.7\,s and edge2 23\,ms: a regret of 7.66\,s on the worst player.
+measures 7.7\,s and edge2 23\,ms. The \emph{regret}, the chosen node's
+latency minus the best node's, is 7.66\,s for the worst player.
 Both load-aware models switch to edge2 at 60 and have zero regret at every
 measured load.
 
 \subsection{Prediction error}
 Table~\ref{tab:pred} fits each model on one replicate and predicts the other.
 The learned model has the lowest median and mean error; the queueing model is
-accurate in the flat region but its $1/(1-u)$ term explodes near the knee, giving a large mean
-error. Fitted on three nodes and tested on the fourth, the learned model
+accurate in the flat region, but as $u$ approaches 1 its $1/(1-u)$ term grows
+without bound, so near the knee it predicts enormous delays and its mean
+error is large. Fitted on three nodes and tested on the fourth, the learned model
 transfers best to edge1, edge3 and cloud, and the queueing model to edge2.
 On a third replicate measured hours later and never used in any fit (25
 cells), the ranking holds: median error 1.2\,ms learned, 2.3\,ms queueing,
-6.9\,ms analytical. A paired bootstrap over cells (2000 resamples) puts the
+6.9\,ms analytical. To see how stable these differences are, we resampled
+the cells with replacement 2000 times and recomputed every model's error on
+the same resample each time (a paired bootstrap). This puts the
 learned model's cross-replicate median error at 0.9\,ms [0.3, 1.5] against
 queueing's 1.8\,ms [1.6, 5.0], lower in every resample; on the 25 held-out
-cells it is lower in 95\%. Asked whether a cell breaks a 50\,ms budget, the learned
-model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
+cells it is lower in 95\%. On those 25 held-out cells, asked whether a cell
+breaks a 50\,ms budget, the learned model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
 the analytical model 0, since it never predicts a violation.
 
 \begin{table}[t]
 \centering
-\caption{Cross-replicate prediction error, 50 cells}
+\caption{Cross-replicate prediction error, 50 cells. Factor off: the
+median ratio between prediction and measurement (1.0 is exact). MAE: mean
+absolute error.}
 \label{tab:pred}
 \begin{tabular}{lrrr}
 \toprule
@@ -342,8 +351,8 @@ The deployments above are static: one placement, measured once. We also ran
 placement as a controller on the live testbed. Every 2\,s it reads every
 bot's latency samples, and every 5\,s every server's player count, tick time
 and CPU; every 10\,s it may move one match (ten players) if the move lowers
-the predicted worst-player p95 by at least 10\,ms and 20\%, or leaves it
-unchanged and lowers the mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
+the predicted worst-player p95 by at least 10\,ms and at least 20\%, or
+leaves it unchanged and lowers the players' mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
 another, so its players reconnect. New matches land on the nearest node with
 room, as a distance-based matchmaker would place them, so two runs differ only
 in the model that drives the controller.
@@ -362,7 +371,8 @@ knee: both runs held edge1 at exactly 40 players, which stayed backlogged
 in one run and recovered in the other. The learned controller keeps the
 worst player's p95 at a median of 33\,ms; its excursions over 100\,ms are the
 10--25\,s after each new match lands on edge1 and before it is moved away.
-Scored on each run's own 10\,s windows, the predictions of whether a node
+Scored on each run's own steady 10\,s windows (load unchanged for the whole
+window), the predictions of whether a node
 breaks 100\,ms reach F1 0.00 for every offline model in the queueing run
 (36 of 127 windows over budget, all at loads the offline curves call
 healthy) and 0.78 for a variant of the learned model that corrects itself
@@ -399,9 +409,10 @@ settled, edge1's CPU quota is cut from 0.5 to 0.25 cores at 220\,s
 (Fig.~\ref{fig:drop}, Table~\ref{tab:drop}). The offline models keep
 predicting edge1's 0.5-core curve: they keep 40 players there and are over
 100\,ms 99--100\% of the time after the cut. A variant corrects the learned
-model while it runs: each steady 10\,s window updates a per-node factor $c$
-such that the node at $P$ players behaves like the grid's node at $cP$. Its
-first version noticed the cut and moved two matches off within 70\,s, but
+model while it runs: after each steady 10\,s window it estimates a per-node factor $c$: the node
+with $P$ players now behaves like the grid's node with $c \times P$ players,
+so $c=2$ means each player costs twice as much as before. Its first version
+noticed the cut and moved two matches off, 30 and 70\,s after it, but
 light, healthy windows below the new knee pulled $c$ back down and it moved a
 match back, which then saw 3.9\,s. With a five-minute memory of loads
 measured over budget, two runs were over 100\,ms for 4\% and 13\% of the
@@ -440,8 +451,8 @@ cost factor for edge1 (true value after the cut: 2).}
 \section{Discussion}
 
 \textbf{When the formula is enough.} Below a node's knee the analytical model
-is within a few milliseconds, and the ranking it produces is right: every
-node's in-game p95 sits within 10\,ms of its network RTT. The formula fails
+is within tens of milliseconds, and the ranking it produces is right: every
+node's in-game p95 stays within about 20\,ms of its network RTT. The formula fails
 in one regime, past the knee, and there it fails by three orders of
 magnitude, not by a margin a tolerance band could absorb. A placement
 algorithm evaluated only on lightly loaded scenarios, as simulator studies
