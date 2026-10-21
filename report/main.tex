@@ -81,6 +81,19 @@ This paper measures that error instead of modelling it. Our contributions:
         half its CPU mid-run without any model being told.
 \end{itemize}
 
+\textbf{Terms.} The \emph{round-trip time} (RTT) is the time a message takes
+to reach a server and come back. \emph{p95} is the 95th percentile: 95\% of
+messages are faster than it, so it describes what the unluckiest players feel
+rather than the average. \emph{Tick time} (MSPT, milliseconds per tick) is
+how long the server's game loop takes for one step; the game runs 20 steps a
+second, so its budget is 50\,ms. \emph{Utilization} $u$ is players divided
+by 100 per core, so $u=1$ is a node's nominal capacity. A node's \emph{knee}
+is the load at which its p95 leaves the flat region and climbs steeply.
+\emph{Median error} is the prediction error that half the predictions beat.
+\emph{F1} grades the yes/no decision ``will this node break the latency
+budget at this load?'': 1 means every violation is caught with no false
+alarms, 0 means none is caught.
+
 \section{Related Work}
 
 \textbf{Service placement in fog and edge.} Surveys of the service placement
