@@ -33,7 +33,7 @@ from pathlib import Path
 import numpy as np
 
 from live import testbed as tb
-from live.policy import CAPACITY, Policy
+from live.policy import CAPACITY, POLICIES, make_policy
 from placement.models import MODELS, load_nodes
 
 REPO = Path(__file__).resolve().parents[1]
@@ -51,6 +51,11 @@ SCENARIOS = {
     "standard": dict(peak=14, arrive_every=25, hold=150, low=6, depart_every=25, tail=90, seed=7),
     # short check that everything moves: 6 matches, about 4 minutes
     "quick": dict(peak=6, arrive_every=15, hold=40, low=3, depart_every=15, tail=40, seed=7),
+    # 8 matches settle (edge1 holds 40 under every load-aware model), then
+    # edge1's CPU is halved without telling any model: does the controller
+    # notice from the measurements alone?
+    "capacity-drop": dict(peak=8, arrive_every=20, hold=0, low=8, depart_every=0, tail=380, seed=7,
+                          cut=dict(t=220, node="edge1", cores=0.25)),
     # no schedule: the operator adds and removes load (live/load.sh or the
     # dashboard) and the run lasts until it is stopped
     "manual": dict(peak=0, arrive_every=0, hold=0, low=0, depart_every=0, tail=4 * 3600, seed=7),
@@ -71,6 +76,9 @@ def schedule(name):
     for mid in leaving:
         ev.append((t, "depart", mid))
         t += s["depart_every"]
+    if "cut" in s:
+        ev.append((s["cut"]["t"], "capacity", (s["cut"]["node"], s["cut"]["cores"])))
+        ev.sort(key=lambda e: e[0])
     return ev, t + s["tail"]
 
 
@@ -118,8 +126,8 @@ class Run:
 
     def __init__(self, policy_name, scenario="standard", arrival="nearest"):
         self.arrival = arrival
-        self.policy = Policy(policy_name)
-        self.shadow = {m: (self.policy if m == policy_name else Policy(m)) for m in MODELS}
+        self.policy = make_policy(policy_name)
+        self.shadow = {m: (self.policy if m == policy_name else make_policy(m)) for m in POLICIES}
         self.nodes = {n["name"]: n for n in load_nodes()}
         self.scenario = scenario
         self.events, self.length = schedule(scenario)
@@ -145,6 +153,7 @@ class Run:
         self.lock = threading.Lock()
         self.stop_flag = threading.Event()
         self.commands = queue.Queue()     # operator load, applied on the next tick
+        self.capacity_changed = set()     # nodes whose CPU quota this run changed
         self.status = "starting"
         self.t0 = None
         self._closed_gaps = []       # migration gaps of matches that have left
@@ -216,6 +225,27 @@ class Run:
         for mid in mids[:count]:
             self.depart(mid)
 
+    def set_capacity(self, node, cores, source="scenario"):
+        """Change a node's CPU quota mid-run. No model is told."""
+        try:
+            tb.set_cpu(node, cores)
+        except Exception as e:
+            self.note("reject", f"could not change {node}'s CPU: {e}")
+            return
+        self.capacity_changed.add(node)
+        self.load_since[node] = time.time()
+        base = self.nodes[node]["cores"]
+        self.note("capacity", f"{source}: {node} CPU set to {cores:g} of its {base:g} cores",
+                  node=node, cores=cores, source=source)
+
+    def restore_capacity(self):
+        for n in self.capacity_changed:
+            try:
+                tb.set_cpu(n, self.nodes[n]["cores"])
+            except Exception:
+                pass
+        self.capacity_changed.clear()
+
     def apply_commands(self):
         while True:
             try:
@@ -227,6 +257,10 @@ class Run:
                 self.overload(cmd["node"], cmd["matches"], src)
             elif cmd["action"] == "remove":
                 self.unload(cmd["matches"], cmd.get("node"), src)
+            elif cmd["action"] == "throttle":
+                self.set_capacity(cmd["node"], cmd["cores"], src)
+            elif cmd["action"] == "restore":
+                self.set_capacity(cmd["node"], self.nodes[cmd["node"]]["cores"], src)
 
     def depart(self, mid):
         m = self.matches.pop(mid, None)
@@ -303,7 +337,13 @@ class Run:
                         and time.time() - self.load_since[n] >= WINDOW_S):
                     for m, pv in preds.items():
                         self.shadow_rows.append((m, n, pv, p95))
+                    # predictions above are made before the models see this
+                    # window, so the live model is scored out of sample too
+                    for pol in set(self.shadow.values()):
+                        pol.observe(n, load[n], p95)
             nodes[n] = {"cores": spec["cores"], "rtt_ms": spec["rtt_ms"], "players": load[n],
+                        "quota_cores": self.server[n].get("quota_cores"),
+                        "capacity_factor": round(self.shadow["learned-live"].capacity_factor(n), 2),
                         "server_players": self.server[n].get("players"),
                         "online": self.server[n].get("online", []),
                         "mspt_ms": self.server[n].get("mspt_ms"),
@@ -345,7 +385,7 @@ class Run:
 
     def shadow_scores(self):
         out = {}
-        for m in MODELS:
+        for m in POLICIES:
             rows = [(p, y) for mm, _, p, y in self.shadow_rows if mm == m and p is not None]
             if not rows:
                 continue
@@ -392,6 +432,8 @@ class Run:
                     _, kind, mid = pending.pop(0)
                     if kind == "arrive":
                         self.arrive(mid)
+                    elif kind == "capacity":
+                        self.set_capacity(*mid)
                     else:
                         self.depart(mid)
                 self.apply_commands()
@@ -418,6 +460,7 @@ class Run:
             raise
         finally:
             tb.stop_all()
+            self.restore_capacity()
             tlf.close()
             for m in self.matches.values():
                 m.close_gap(time.time())
@@ -440,7 +483,7 @@ class Run:
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser(description="run one live scenario without the dashboard")
-    ap.add_argument("--policy", choices=list(MODELS), default="learned")
+    ap.add_argument("--policy", choices=list(POLICIES), default="learned")
     ap.add_argument("--scenario", choices=list(SCENARIOS), default="quick")
     ap.add_argument("--arrival", choices=ARRIVALS, default="nearest")
     a = ap.parse_args()

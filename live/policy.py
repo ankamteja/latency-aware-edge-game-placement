@@ -18,7 +18,10 @@ between two nodes on noise. The load-blind analytical model predicts the same
 latency for a node at any load, so it never sees a reason to move a match off
 a crowded node; the only moves it ever makes are toward a nearer node.
 """
+import math
 from dataclasses import dataclass
+
+import numpy as np
 
 from placement.models import MODELS, load_nodes, load_rows
 
@@ -45,6 +48,9 @@ class Policy:
     def predict(self, node, players):
         return self.model.predict(self.nodes[node], players) if players else None
 
+    def observe(self, node, players, measured_p95):
+        """A measured steady window. The offline models ignore it."""
+
     def score(self, load):
         """(worst, player-weighted mean) predicted p95 for a load dict."""
         preds = {n: self.predict(n, p) for n, p in load.items() if p}
@@ -52,6 +58,9 @@ class Policy:
             return 0.0, 0.0
         total = sum(load[n] for n in preds)
         return max(preds.values()), sum(preds[n] * load[n] for n in preds) / total
+
+    def capacity_factor(self, node):
+        return 1.0
 
     def place(self, load, size):
         best = None
@@ -93,3 +102,58 @@ class Policy:
         return {"match": mid, "src": src, "dst": dst,
                 "predicted_worst_before": worst0, "predicted_worst_after": worst,
                 "predicted_mean_before": mean0, "predicted_mean_after": mean}
+
+
+class LivePolicy(Policy):
+    """The learned model, corrected from live measurements.
+
+    The offline model knows each node's capacity from the grid. If a node
+    gets slower while running (a noisy neighbour, a throttled host, a CPU
+    quota cut) every offline model keeps predicting the old curve. This one
+    compares each steady 10 s window with its own prediction and estimates
+    how much more each player now costs that node: the factor c such that
+    the node at P players behaves as the grid measured it at c x P. A node
+    whose CPU was halved behaves like c = 2. Prediction for that node then
+    uses c x P, which moves the knee, not just the level. (Scaling the
+    node's cores instead would ask the trees about nodes smaller than any
+    they were fitted on, where they cannot extrapolate.)
+
+    c is the value in [0.5, 4] that best explains the window, with a small
+    pull toward 1 (in the flat region every c explains the window equally
+    well, and the evidence should not move the estimate), smoothed with an
+    exponential moving average in log space."""
+    GRID = np.geomspace(0.5, 4.0, 43)
+    ALPHA = 0.5
+    PRIOR = 0.08
+
+    def __init__(self, nodes=None, gains=None):
+        super().__init__("learned", nodes, gains)
+        self.name = "learned-live"
+        self.log_c = {n: 0.0 for n in self.nodes}
+
+    def capacity_factor(self, node):
+        return math.exp(self.log_c[node])
+
+    def _raw(self, node, players, c):
+        return self.model.predict(self.nodes[node], players * c)
+
+    def predict(self, node, players):
+        if not players:
+            return None
+        return self._raw(node, players, self.capacity_factor(node))
+
+    def observe(self, node, players, measured_p95):
+        if not players or measured_p95 is None or measured_p95 <= 0:
+            return
+        y = math.log(measured_p95)
+        cost = [abs(math.log(self._raw(node, players, c)) - y)
+                + self.PRIOR * abs(math.log(c)) for c in self.GRID]
+        best = math.log(self.GRID[int(np.argmin(cost))])
+        self.log_c[node] = (1 - self.ALPHA) * self.log_c[node] + self.ALPHA * best
+
+
+POLICIES = ("analytical", "queueing", "learned", "learned-live")
+
+
+def make_policy(name):
+    return LivePolicy() if name == "learned-live" else Policy(name)

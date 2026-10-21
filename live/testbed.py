@@ -108,18 +108,40 @@ def server_sample(node, cpu):
         mspt_raw = rcon(node, "mspt").strip()
         list_raw = rcon(node, "list").strip()
         c = cpu.read(node)
+        quota = cpu_quota(node)
     except Exception:
-        return {"players": None, "mspt_ms": None, "cpu_pct": None, "online": [], "raw": []}
+        return {"players": None, "mspt_ms": None, "cpu_pct": None, "online": [], "raw": [],
+                "quota_cores": None}
     mspt, players = MSPT_RE.search(mspt_raw), LIST_RE.search(list_raw)
     names = list_raw.split(":", 1)[1].replace(" ", "").split(",") if ":" in list_raw else []
     return {
         "players": int(players.group(1)) if players else None,
         "mspt_ms": float(mspt.group(1)) if mspt else None,
         "cpu_pct": c,
+        "quota_cores": quota,
         "online": [n for n in names if n],
         # what the server itself printed, for the dashboard's raw feed
         "raw": [f"rcon list: {list_raw[:90]}", f"rcon mspt: {' '.join(mspt_raw.split())[:110]}"],
     }
+
+
+def set_cpu(node, cores):
+    """Change a node's CPU quota while it runs: the "node got slower" event.
+    docker update rewrites the container's cgroup cpu.max in place."""
+    r = subprocess.run(["docker", "update", "--cpu-period", "100000",
+                        "--cpu-quota", str(int(cores * 100000)), ctr(node)],
+                       capture_output=True, text=True, timeout=10)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip())
+
+
+def cpu_quota(node):
+    """Cores the node is allowed right now, read from its own cgroup."""
+    txt = sh(["docker", "exec", ctr(node), "cat", "/sys/fs/cgroup/cpu.max"]).split()
+    try:
+        return int(txt[0]) / int(txt[1])
+    except (IndexError, ValueError):
+        return None
 
 
 # ---- latency streams ---------------------------------------------------------
