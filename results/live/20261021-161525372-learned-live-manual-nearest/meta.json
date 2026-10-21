@@ -1,0 +1,29 @@
+{
+  "run": "20261021-161525372-learned-live-manual-nearest",
+  "policy": "learned-live",
+  "scenario": "manual",
+  "arrival": "nearest",
+  "scenario_params": {
+    "peak": 0,
+    "arrive_every": 0,
+    "hold": 0,
+    "low": 0,
+    "depart_every": 0,
+    "tail": 14400,
+    "seed": 7
+  },
+  "length_s": 14400.0,
+  "tick_s": 2.0,
+  "window_s": 10.0,
+  "rebalance_every_s": 10.0,
+  "gains": {
+    "worst_ms": 10.0,
+    "worst_frac": 0.2,
+    "mean_ms": 3.0,
+    "cooldown_s": 60.0
+  },
+  "capacity": 100,
+  "budget_ms": 100.0,
+  "started": "2026-10-21 16:15:25",
+  "power_mode": "throughput-performance"
+}

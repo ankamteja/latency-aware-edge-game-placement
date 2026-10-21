@@ -1,0 +1,29 @@
+{
+  "run": "20261021-155627132-queueing-standard-nearest",
+  "policy": "queueing",
+  "scenario": "standard",
+  "arrival": "nearest",
+  "scenario_params": {
+    "peak": 14,
+    "arrive_every": 25,
+    "hold": 150,
+    "low": 6,
+    "depart_every": 25,
+    "tail": 90,
+    "seed": 7
+  },
+  "length_s": 790.0,
+  "tick_s": 2.0,
+  "window_s": 10.0,
+  "rebalance_every_s": 10.0,
+  "gains": {
+    "worst_ms": 10.0,
+    "worst_frac": 0.2,
+    "mean_ms": 3.0,
+    "cooldown_s": 60.0
+  },
+  "capacity": 100,
+  "budget_ms": 100.0,
+  "started": "2026-10-21 15:56:27",
+  "power_mode": "throughput-performance"
+}

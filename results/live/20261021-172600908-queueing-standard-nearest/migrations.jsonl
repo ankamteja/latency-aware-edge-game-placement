@@ -1,0 +1,11 @@
+{"t": 100.2, "match": 0, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 17.9, "predicted_mean_before": 60000.0, "predicted_mean_after": 17.3}
+{"t": 110.1, "match": 1, "src": "edge1", "dst": "edge2", "predicted_worst_before": 17.9, "predicted_worst_after": 18.2, "predicted_mean_before": 17.3, "predicted_mean_after": 14.0}
+{"t": 150.9, "match": 2, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 18.7, "predicted_mean_before": 42862.4, "predicted_mean_after": 17.8}
+{"t": 181.3, "match": 3, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 19.2, "predicted_mean_before": 37507.0, "predicted_mean_after": 18.2}
+{"t": 200.2, "match": 4, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 20.0, "predicted_mean_before": 33341.9, "predicted_mean_after": 18.8}
+{"t": 230.2, "match": 5, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 21.2, "predicted_mean_before": 30010.0, "predicted_mean_after": 19.6}
+{"t": 250.2, "match": 6, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 23.2, "predicted_mean_before": 27284.3, "predicted_mean_after": 21.0}
+{"t": 280.2, "match": 7, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 27.2, "predicted_mean_before": 25013.6, "predicted_mean_after": 23.9}
+{"t": 300.7, "match": 8, "src": "edge1", "dst": "edge3", "predicted_worst_before": 60000.0, "predicted_worst_after": 32.8, "predicted_mean_before": 23093.7, "predicted_mean_after": 24.6}
+{"t": 331.1, "match": 9, "src": "edge1", "dst": "edge3", "predicted_worst_before": 60000.0, "predicted_worst_after": 32.9, "predicted_mean_before": 21446.5, "predicted_mean_after": 25.2}
+{"t": 650.3, "match": 9, "src": "edge3", "dst": "edge1", "predicted_worst_before": 32.8, "predicted_worst_after": 18.7, "predicted_mean_before": 17.5, "predicted_mean_after": 17.8}

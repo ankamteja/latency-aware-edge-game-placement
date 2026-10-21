@@ -1,0 +1,61 @@
+{
+  "run": "20261021-154235986-learned-standard-nearest",
+  "policy": "learned",
+  "scenario": "standard",
+  "arrival": "nearest",
+  "duration_s": 791.7,
+  "status": "finished",
+  "samples": 70661,
+  "pooled_p50_ms": 18.0,
+  "pooled_p95_ms": 729.0,
+  "pooled_p99_ms": 2905.0,
+  "share_samples_over_budget": 0.10258841510875873,
+  "worst_p95_median_ms": 47.02499999999998,
+  "worst_p95_max_ms": 5763.55,
+  "time_over_budget_share": 0.40561224489795916,
+  "migrations": 10,
+  "migration_gap_mean_s": 6.232068872451782,
+  "budget_ms": 100.0,
+  "shadow": {
+    "analytical": {
+      "windows": 137,
+      "median_abs_err_ms": 6.850000000000011,
+      "mae_ms": 272.55875912408754,
+      "accuracy": 0.8540145985401459,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "positives": 20
+    },
+    "queueing": {
+      "windows": 137,
+      "median_abs_err_ms": 2.149999999999988,
+      "mae_ms": 267.1558394160584,
+      "accuracy": 0.8540145985401459,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "positives": 20
+    },
+    "learned": {
+      "windows": 137,
+      "median_abs_err_ms": 2.1000000000000014,
+      "mae_ms": 267.74781021897803,
+      "accuracy": 0.8540145985401459,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "positives": 20
+    },
+    "learned-live": {
+      "windows": 137,
+      "median_abs_err_ms": 245.3,
+      "mae_ms": 1063.706204379562,
+      "accuracy": 0.5328467153284672,
+      "precision": 0.21794871794871795,
+      "recall": 0.85,
+      "f1": 0.3469387755102041,
+      "positives": 20
+    }
+  }
+}

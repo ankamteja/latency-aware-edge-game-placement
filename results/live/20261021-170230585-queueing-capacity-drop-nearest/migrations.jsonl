@@ -1,0 +1,4 @@
+{"t": 80.2, "match": 0, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 17.9, "predicted_mean_before": 60000.0, "predicted_mean_after": 17.3}
+{"t": 91.1, "match": 1, "src": "edge1", "dst": "edge2", "predicted_worst_before": 17.9, "predicted_worst_after": 18.2, "predicted_mean_before": 17.3, "predicted_mean_after": 14.0}
+{"t": 120.8, "match": 2, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 18.7, "predicted_mean_before": 42862.4, "predicted_mean_after": 17.8}
+{"t": 140.2, "match": 3, "src": "edge1", "dst": "edge2", "predicted_worst_before": 60000.0, "predicted_worst_after": 19.2, "predicted_mean_before": 37507.0, "predicted_mean_after": 18.2}

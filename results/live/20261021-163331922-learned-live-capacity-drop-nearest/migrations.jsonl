@@ -1,0 +1,12 @@
+{"t": 40.2, "match": 0, "src": "edge1", "dst": "edge2", "predicted_worst_before": 7049.3, "predicted_worst_after": 16.9, "predicted_mean_before": 7049.3, "predicted_mean_after": 15.0}
+{"t": 60.4, "match": 1, "src": "edge1", "dst": "edge2", "predicted_worst_before": 7049.3, "predicted_worst_after": 17.7, "predicted_mean_before": 5291.2, "predicted_mean_after": 15.8}
+{"t": 80.2, "match": 2, "src": "edge1", "dst": "edge2", "predicted_worst_before": 7049.3, "predicted_worst_after": 20.9, "predicted_mean_before": 4237.9, "predicted_mean_after": 18.2}
+{"t": 100.2, "match": 3, "src": "edge1", "dst": "edge2", "predicted_worst_before": 64.0, "predicted_worst_after": 22.8, "predicted_mean_before": 42.5, "predicted_mean_after": 18.6}
+{"t": 120.5, "match": 4, "src": "edge1", "dst": "edge3", "predicted_worst_before": 64.0, "predicted_worst_after": 31.6, "predicted_mean_before": 40.4, "predicted_mean_after": 20.5}
+{"t": 140.3, "match": 5, "src": "edge1", "dst": "edge2", "predicted_worst_before": 6591.8, "predicted_worst_after": 935.8, "predicted_mean_before": 2487.5, "predicted_mean_after": 252.1}
+{"t": 151.1, "match": 6, "src": "edge1", "dst": "edge3", "predicted_worst_before": 935.8, "predicted_worst_after": 32.0, "predicted_mean_before": 252.1, "predicted_mean_after": 23.3}
+{"t": 160.2, "match": 0, "src": "edge2", "dst": "edge3", "predicted_worst_before": 173.1, "predicted_worst_after": 33.7, "predicted_mean_before": 117.2, "predicted_mean_after": 25.0}
+{"t": 330.4, "match": 7, "src": "edge1", "dst": "cloud", "predicted_worst_before": 1084.5, "predicted_worst_after": 1025.0, "predicted_mean_before": 665.1, "predicted_mean_after": 534.7}
+{"t": 340.2, "match": 1, "src": "edge2", "dst": "edge3", "predicted_worst_before": 1025.0, "predicted_worst_after": 41.4, "predicted_mean_before": 530.1, "predicted_mean_after": 31.8}
+{"t": 490.2, "match": 2, "src": "edge2", "dst": "cloud", "predicted_worst_before": 386.9, "predicted_worst_after": 137.1, "predicted_mean_before": 218.8, "predicted_mean_after": 84.1}
+{"t": 500.2, "match": 0, "src": "edge3", "dst": "cloud", "predicted_worst_before": 137.1, "predicted_worst_after": 43.7, "predicted_mean_before": 84.1, "predicted_mean_after": 33.8}
