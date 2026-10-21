@@ -48,7 +48,7 @@ def representative(scenario, policies):
     learned-live runs from before the violation memory are left out. In a
     capacity-drop, runs whose controller had already emptied the cut node
     are left out too: they cannot show the cut being noticed (docs/09 9.6)."""
-    from live.summarize import MEMORY_FROM, at_cut
+    from live.summarize import at_cut
     by = {}
     for d in sorted(RESULTS.iterdir()):
         if not (d / "summary.json").exists() or not (d / "meta.json").exists():
@@ -58,8 +58,8 @@ def representative(scenario, policies):
         if r["meta"]["scenario"] != scenario or p not in policies \
                 or r["summary"].get("status") != "finished":
             continue
-        if p == "learned-live" and d.name < MEMORY_FROM:
-            continue
+        if p == "learned-live" and "observe_settle_s" not in r["meta"]:
+            continue                 # earlier versions; summary.md lists them
         cut = r["meta"]["scenario_params"].get("cut")
         if cut and at_cut(r["tl"], cut)[1] == 0:
             continue

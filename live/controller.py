@@ -42,6 +42,10 @@ TICK_S = 2.0
 SERVER_EVERY_S = 5.0
 REBALANCE_EVERY_S = 10.0
 WINDOW_S = 10.0
+# the live model learns only from windows this long after the node's load last
+# changed: a match takes about 6 s to log in and its first 10-25 s are join
+# spikes, which taught the model to distrust a healthy node (docs/09 9.6)
+OBSERVE_SETTLE_S = 30.0
 MIN_SAMPLES = 20          # fewer samples than this in a window: no percentile
 BUDGET_MS = 100.0
 SIZE = tb.MATCH_SIZE
@@ -401,8 +405,9 @@ class Run:
                         self.shadow_rows.append((m, n, pv, p95))
                     # predictions above are made before the models see this
                     # window, so the live model is scored out of sample too
-                    for pol in set(self.shadow.values()):
-                        pol.observe(n, load[n], p95)
+                    if time.time() - self.load_since[n] >= OBSERVE_SETTLE_S:
+                        for pol in set(self.shadow.values()):
+                            pol.observe(n, load[n], p95)
             nodes[n] = {"cores": spec["cores"], "rtt_ms": spec["rtt_ms"], "players": load[n],
                         "quota_cores": self.server[n].get("quota_cores"),
                         "capacity_factor": round(self.shadow["learned-live"].capacity_factor(n), 2),
@@ -419,8 +424,8 @@ class Run:
         row = {"t": round(self.elapsed(), 1), "worst_p95_ms": worst,
                "predicted_worst_ms": round(pw, 1) if any(load.values()) else None,
                "players": sum(load.values()),
-               "nodes": {n: {k: v.get(k) for k in ("players", "p95_ms", "mspt_ms", "cpu_pct",
-                                                    "quota_cores", "capacity_factor")}
+               "nodes": {n: {k: v.get(k) for k in ("players", "server_players", "p95_ms", "mspt_ms",
+                                                    "cpu_pct", "quota_cores", "capacity_factor")}
                          for n, v in nodes.items()}}
         self.timeline.append(row)
         return nodes, row
@@ -472,6 +477,7 @@ class Run:
                 "arrival": self.arrival,
                 "scenario_params": SCENARIOS[self.scenario], "length_s": self.length,
                 "tick_s": TICK_S, "window_s": WINDOW_S, "rebalance_every_s": REBALANCE_EVERY_S,
+                "observe_settle_s": OBSERVE_SETTLE_S,
                 "gains": self.policy.gains.__dict__, "capacity": CAPACITY, "budget_ms": BUDGET_MS,
                 "started": time.strftime("%Y-%m-%d %H:%M:%S")}
         write_atomic(self.dir / "meta.json", json.dumps(meta, indent=2))

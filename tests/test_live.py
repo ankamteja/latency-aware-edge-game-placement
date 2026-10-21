@@ -243,3 +243,20 @@ def test_join_places_each_match_where_the_model_predicts_best(monkeypatch, tmp_p
     # edge2 becomes the better choice
     assert [n for _, n in started] == ["edge1", "edge1", "edge2", "edge2"]
     assert all("predicted" in e["text"] for e in r.log)
+
+
+def test_summary_labels_the_three_live_versions():
+    from live.summarize import label
+    live = {"policy": "learned-live"}
+    assert label(live, "20261021-111240742-x") == "learned-live, first version"
+    assert label(live, "20261021-150643068-x") == "learned-live, before the settle rule"
+    assert label({**live, "observe_settle_s": 30.0}, "20261021-230000000-x") == "learned-live"
+    assert label({"policy": "learned"}, "20261021-104850714-x") == "learned"
+
+
+def test_at_cut_uses_the_measured_cut_and_players_before_it():
+    from live.summarize import at_cut
+    node = lambda players, q: {"edge1": {"players": players, "quota_cores": q}}
+    tl = [{"t": 218.0, "nodes": node(30, 0.5)}, {"t": 222.6, "nodes": node(30, 0.25)},
+          {"t": 250.0, "nodes": node(20, 0.25)}]
+    assert at_cut(tl, {"t": 220, "node": "edge1", "cores": 0.25}) == (222.6, 30)

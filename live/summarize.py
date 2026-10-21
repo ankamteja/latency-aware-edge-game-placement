@@ -19,9 +19,14 @@ MEMORY_FROM = "20261021-112507411"
 
 
 def label(meta, name):
+    """learned-live has three versions: no violation memory, memory but
+    learning from join windows too, and memory plus the settle rule
+    (meta observe_settle_s, live/controller.py OBSERVE_SETTLE_S)."""
     p = meta["policy"]
     if p == "learned-live" and name < MEMORY_FROM:
         return "learned-live, first version"
+    if p == "learned-live" and "observe_settle_s" not in meta:
+        return "learned-live, before the settle rule"
     return p
 
 
