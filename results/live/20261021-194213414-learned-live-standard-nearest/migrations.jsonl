@@ -1,0 +1,15 @@
+{"t": 100.2, "match": 0, "src": "edge1", "dst": "edge2", "predicted_worst_before": 362.4, "predicted_worst_after": 362.4, "predicted_mean_before": 362.4, "predicted_mean_after": 293.3}
+{"t": 110.1, "match": 1, "src": "edge1", "dst": "edge2", "predicted_worst_before": 362.4, "predicted_worst_after": 17.7, "predicted_mean_before": 293.3, "predicted_mean_after": 13.2}
+{"t": 130.1, "match": 2, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 462.4, "predicted_mean_before": 314.2, "predicted_mean_after": 241.6}
+{"t": 140.1, "match": 3, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 20.9, "predicted_mean_before": 241.6, "predicted_mean_after": 17.5}
+{"t": 150.3, "match": 4, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 22.8, "predicted_mean_before": 210.1, "predicted_mean_after": 19.3}
+{"t": 180.4, "match": 5, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 22.8, "predicted_mean_before": 187.6, "predicted_mean_after": 19.7}
+{"t": 200.2, "match": 6, "src": "edge1", "dst": "edge3", "predicted_worst_before": 462.4, "predicted_worst_after": 31.6, "predicted_mean_before": 169.3, "predicted_mean_after": 21.0}
+{"t": 230.2, "match": 7, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 31.6, "predicted_mean_before": 155.5, "predicted_mean_after": 21.2}
+{"t": 250.2, "match": 8, "src": "edge1", "dst": "edge3", "predicted_worst_before": 7049.3, "predicted_worst_after": 32.0, "predicted_mean_before": 1939.9, "predicted_mean_after": 22.9}
+{"t": 280.2, "match": 9, "src": "edge1", "dst": "edge3", "predicted_worst_before": 462.4, "predicted_worst_after": 33.7, "predicted_mean_before": 134.2, "predicted_mean_after": 24.0}
+{"t": 300.5, "match": 10, "src": "edge1", "dst": "edge3", "predicted_worst_before": 462.4, "predicted_worst_after": 33.1, "predicted_mean_before": 126.7, "predicted_mean_after": 24.6}
+{"t": 330.5, "match": 11, "src": "edge1", "dst": "edge2", "predicted_worst_before": 462.4, "predicted_worst_after": 33.2, "predicted_mean_before": 120.0, "predicted_mean_after": 24.0}
+{"t": 350.2, "match": 0, "src": "edge2", "dst": "edge3", "predicted_worst_before": 646.5, "predicted_worst_after": 36.0, "predicted_mean_before": 380.4, "predicted_mean_after": 25.7}
+{"t": 510.4, "match": 0, "src": "edge3", "dst": "edge1", "predicted_worst_before": 37.5, "predicted_worst_after": 33.1, "predicted_mean_before": 26.2, "predicted_mean_after": 22.6}
+{"t": 650.3, "match": 9, "src": "edge3", "dst": "edge1", "predicted_worst_before": 31.6, "predicted_worst_after": 20.0, "predicted_mean_before": 18.2, "predicted_mean_after": 17.4}

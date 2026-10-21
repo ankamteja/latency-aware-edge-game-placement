@@ -28,6 +28,9 @@ Worst = the worst node's p95 over the last 10 s, sampled every tick.
 | 20261021-104850714-learned-standard-nearest | learned | 33 ms | 18% | 817 ms | 10 | 5.9 s |
 | 20261021-154235986-learned-standard-nearest | learned | 47 ms | 41% | 5.8 s | 10 | 6.2 s |
 | 20261021-171209928-learned-standard-nearest | learned | 39 ms | 33% | 3.6 s | 10 | 6.1 s |
+| 20261021-192823856-learned-live-standard-nearest | learned-live | 34 ms | 11% | 1.3 s | 15 | 6.2 s |
+| 20261021-194213414-learned-live-standard-nearest | learned-live | 32 ms | 5% | 898 ms | 15 | 6.0 s |
+| 20261021-195603018-learned-live-standard-nearest | learned-live | 33 ms | 8% | 918 ms | 16 | 6.0 s |
 | 20261021-143333558-queueing-standard-nearest | queueing | 166 ms | 53% | 5.7 s | 11 | 6.3 s |
 | 20261021-155627132-queueing-standard-nearest | queueing | 72 ms | 46% | 3.5 s | 11 | 6.3 s |
 | 20261021-172600908-queueing-standard-nearest | queueing | 99 ms | 50% | 3.8 s | 11 | 6.2 s |
@@ -47,4 +50,5 @@ Median over runs, with [lowest, highest] when there is more than one.
 |---|---|---|---|---|---|
 | standard | analytical | 3 | 1.1 s [76 ms, 4.5 s] | 53% [46%, 62%] | 0 [0, 0] |
 | standard | learned | 3 | 39 ms [33 ms, 47 ms] | 33% [18%, 41%] | 10 [10, 10] |
+| standard | learned-live | 3 | 33 ms [32 ms, 34 ms] | 8% [5%, 11%] | 15 [15, 16] |
 | standard | queueing | 3 | 99 ms [72 ms, 166 ms] | 50% [46%, 53%] | 11 [11, 11] |
