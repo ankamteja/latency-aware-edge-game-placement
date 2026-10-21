@@ -31,9 +31,9 @@ latency of the smallest node rises from 15\,ms at 40 players to 6.7--8.6\,s at
 two replicates of the load grid, compute each model's optimal placement for
 40 to 160 players, and deploy every placement for real. The load-blind
 placement leaves its worst players at 18--30\,s from 80 players on; both
-load-aware placements stay at 20--39\,ms. The learned model predicts latency
-best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
-held-out third replicate) but, on these scenarios, does not place better than
+load-aware placements stay at 16--55\,ms (two deployment rounds). The learned model predicts latency
+best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.1\,ms on two
+held-out replicates) but, on these scenarios, does not place better than
 the fitted closed form. Run as a live controller on the same schedule of
 players (three runs each), the load-blind model never moves a match and its
 worst players sit at a median of 1.1\,s, queueing's at 99\,ms, the learned
@@ -74,7 +74,7 @@ This paper measures that error instead of modelling it. Our contributions:
         protocol-level clients, with latency measured at four depths at once,
         so delay is attributed to a layer rather than inferred;
   \item a labelled dataset mapping (node, load) to measured tail latency,
-        three replicates (one held out for testing), released with the code;
+        four replicates (two held out for testing), released with the code;
   \item an end-to-end comparison in which each latency model's optimal
         placement is deployed and measured, so models are graded by a clock
         rather than by each other;
@@ -206,8 +206,8 @@ CPU and player count are sampled every 5\,s from the server.
 Each grid cell is one node at one load: 20\,s settle, 15\,s idle baseline,
 staggered joins, 90\,s steady window; only the steady window is analysed.
 edge1 is measured at 1, 10, 20, 30, 40, 50 and 60 players, the others at 1,
-20, 40, 60, 80 and 100. The grid is run three times: twice to fit on (the
-second in reverse node order) and a third time, hours later on a restarted
+20, 40, 60, 80 and 100. The grid is run four times: twice to fit on (the
+second in reverse node order) and twice more, hours later on a restarted
 testbed, held out for testing. Before collection the worlds are
 warmed, server heaps are prevented from swapping, and the game's day/night
 cycle, weather and hostile mobs are frozen: with the cycle running, a single
@@ -232,9 +232,9 @@ each model the optimum is found by exhaustive search.
 
 Every resulting placement is deployed on the testbed with
 all loaded nodes running at once, and measured with the same streams as the
-grid. No model's prediction is used to grade any model. Each placement was
-deployed once. With every node loaded at the same time the numbers differ
-from the grid's single-node cells: edge1 with 40 players measured 26\,ms
+grid. No model's prediction is used to grade any model. Every placement was
+deployed twice, in two rounds hours apart. With every node loaded at the same time the numbers differ
+from the grid's single-node cells: edge1 with 40 players measured 26 and 16\,ms
 deployed against 14.5\,ms in the grid, a difference we have not isolated
 (the client generates load for all nodes at once, and 40 players is just
 below edge1's knee).
@@ -284,7 +284,8 @@ joins, steady window) and samples tick time, CPU and players over RCON (the serv
 administration console) every 5\,s; \texttt{grid.sh} sweeps every node's ladder.
 
 \textbf{Dataset and models.} \texttt{dataset/build\_dataset.py} joins the
-raw streams of every cell into 30\,s windows (106 cells, 318 rows).
+raw streams of every cell into 30\,s windows (150 cells, 450 rows: 100
+from the four grid replicates, 50 from the two deployment rounds).
 \texttt{placement/models.py} implements the three models behind one
 interface, \texttt{predict(node, players)}, so that every algorithm runs
 unchanged with any of them. \texttt{model/evaluate.py},
@@ -323,7 +324,7 @@ the link delay, so this mainly shows that the hosts' network stacks added
 nothing under load: whatever grows, grows above the network. edge1 stays within 10\,ms of its 5\,ms
 RTT up to 40 players and reaches 6.7--8.6\,s at 60, where its tick time jumps
 from 6.6 to 46\,ms. edge2 is flat to 60 players (23\,ms); its knee is at 80
-players (one replicate already measured 2.7\,s there, the other two
+players (one replicate already measured 2.7\,s there, the other three
 34--44\,ms) and every replicate breaks by 100. edge3 and cloud never reach a knee within 100 players. The tail
 leaves its flat region at edge1, 50 players, while mean tick time is still
 6.6\,ms, an eighth of the 50\,ms budget.
@@ -388,17 +389,19 @@ accurate in the flat region, but as $u$ approaches 1 its $1/(1-u)$ term grows
 without bound, so near the knee it predicts enormous delays and its mean
 error is large. Fitted on three nodes and tested on the fourth, the learned model
 transfers best to edge1, edge3 and cloud, and the queueing model to edge2.
-On a third replicate measured hours later and never used in any fit (25
-cells), the ranking holds: median error 1.2\,ms learned, 2.3\,ms queueing,
-6.9\,ms analytical. To see how stable these differences are, we resampled
+On two further replicates measured hours later and never used in any fit
+(50 cells), the ranking holds: median error 1.1\,ms learned, 2.2\,ms
+queueing, 6.9\,ms analytical. To see how stable these differences are, we resampled
 the cells with replacement 2000 times and recomputed every model's error on
 the same resample each time (a paired bootstrap). This puts the
 learned model's cross-replicate median error at 0.9\,ms [0.3, 1.5] against
-queueing's 1.8\,ms [1.6, 5.0], lower in every resample; on the 25 held-out
-cells it is lower in 95\%, but the interval of the difference,
-$-1.1$\,ms [$-9.6$, $+0.3$], includes zero, so there the gap is not significant. On those 25 held-out cells, asked whether a cell
-breaks a 50\,ms budget, the learned model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
-the analytical model 0, since it never predicts a violation.
+queueing's 1.8\,ms [1.6, 5.0], lower in every resample; on the 50 held-out
+cells it is lower in 96\%, but the interval of the difference,
+$-1.1$\,ms [$-4.2$, $+0.1$], includes zero, so there the gap is not
+significant. On those held-out cells, asked whether a cell breaks a 50\,ms
+budget, the learned model scores F1 0.86 (12 of 14 violations caught, two
+false alarms), the queueing model 0.60 (6 of 14, none false) and the
+analytical model 0, since it never predicts a violation.
 
 \begin{table}[t]
 \centering
@@ -421,22 +424,22 @@ learned    & 0.9 ms & 1.28$\times$ & 469 ms \\
 
 \begin{table}[t]
 \centering
-\caption{Worst node's measured p95 (ms) for each model's placement
-(edge1/edge2/edge3/cloud players assigned). The overloaded edge1 under the
-analytical placement held only 66, 63 and 71 of its 80, 100 and 100; the
-others timed out.}
+\caption{Worst node's measured p95 (ms) for each model's placement, round 1
+/ round 2 (edge1/edge2/edge3/cloud players assigned). The overloaded edge1
+under the analytical placement held only 66, 63, 71 (round 1) and 52, 52, 43
+(round 2) of its 80, 100 and 100; the others timed out.}
 \label{tab:deploy}
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{rlll}
+\setlength{\tabcolsep}{2pt}
+\resizebox{\columnwidth}{!}{\begin{tabular}{rlll}
 \toprule
 players & analytical & queueing & learned \\
 \midrule
-40  & 26 (40/0/0/0)        & 26 (40/0/0/0)  & 26 (40/0/0/0) \\
-80  & 29\,897 (80/0/0/0)   & 20 (40/40/0/0) & 20 (40/40/0/0) \\
-120 & 17\,758 (100/20/0/0) & 31 (40/80/0/0) & 32 (40/70/10/0) \\
-160 & 19\,990 (100/60/0/0) & 35 (40/80/40/0) & 39 (40/70/50/0) \\
+40  & 26 / 16 (40/0/0/0)               & 26 / 16 (40/0/0/0)    & 26 / 16 (40/0/0/0) \\
+80  & 29\,897 / 28\,244 (80/0/0/0)     & 20 / 20 (40/40/0/0)   & 20 / 20 (40/40/0/0) \\
+120 & 17\,758 / 18\,658 (100/20/0/0)   & 31 / 37 (40/80/0/0)   & 32 / 32 (40/70/10/0) \\
+160 & 19\,990 / 28\,251 (100/60/0/0)   & 35 / 40 (40/80/40/0)  & 39 / 55 (40/70/50/0) \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 Table~\ref{tab:deploy} lists the deployed placements and Fig.~\ref{fig:deploy}
@@ -449,18 +452,21 @@ pay for the distance of the nodes they spread to. Deployed, it is the worst
 by orders of magnitude. The
 analytical model predicts 5--15\,ms for every scenario and fills the nearest
 node to its 100-player cap before using the next; from 80 players its worst
-players wait 18--30\,s, about 510 to 1500 times longer than under either
-load-aware placement. Both load-aware
+players wait 18--30\,s in both rounds, about 500 to 1500 times longer than
+under either load-aware placement. Both load-aware
 models keep edge1 at 40 players and spread the rest; their placements measure
-within 4\,ms of each other, and the learned model's predictions of its own
-deployments are within 12\,ms of what was measured. On these scenarios the learned model's
+within 15\,ms of each other with neither consistently ahead (the largest gap,
+learned 55\,ms at 160 players in round 2, is edge1 at 40 players again), and
+the learned model's predictions of its own deployments are within 22\,ms of
+what was measured. On these scenarios the learned model's
 advantage is in prediction, not in the placement decision: a correctly fitted
 closed form reaches almost the same placement.
 
 \begin{table}[t]
 \centering
 \caption{Worst player's p95 (ms): what a simulator built on (1) reports for
-each placement, and what was measured when it was deployed}
+each placement, and what was measured when it was deployed (round 1 /
+round 2)}
 \label{tab:sim}
 \setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{rrrrr}
@@ -468,10 +474,10 @@ each placement, and what was measured when it was deployed}
  & \multicolumn{2}{c}{load-blind placement} & \multicolumn{2}{c}{learned placement} \\
 players & simulated & measured & predicted & measured \\
 \midrule
-40  & 5.2  & 26        & 14.0 & 26 \\
-80  & 5.2  & 29\,897   & 20.9 & 20 \\
-120 & 15.2 & 17\,758   & 31.6 & 32 \\
-160 & 15.2 & 19\,990   & 33.2 & 39 \\
+40  & 5.2  & 26 / 16              & 14.0 & 26 / 16 \\
+80  & 5.2  & 29\,897 / 28\,244    & 20.9 & 20 / 20 \\
+120 & 15.2 & 17\,758 / 18\,658    & 31.6 & 32 / 32 \\
+160 & 15.2 & 19\,990 / 28\,251    & 33.2 & 39 / 55 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -479,7 +485,7 @@ players & simulated & measured & predicted & measured \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig5_deployments.png}
-\caption{Each model's optimal placement, deployed and measured (log scale).}
+\caption{Each model's optimal placement, deployed and measured (log scale). Bars: median of the two rounds; dots: each round.}
 \label{fig:deploy}
 \end{figure}
 
@@ -534,7 +540,7 @@ windows. Median [min, max] over three runs per controller; 91--137 windows
 per run, 7--36 of them over 100\,ms.}
 \label{tab:shadow}
 \setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{lrrrr}
+\resizebox{\columnwidth}{!}{\begin{tabular}{lrrrr}
 \toprule
 in control & analyt. & queue. & learned & live-corr. \\
 \midrule
@@ -542,7 +548,7 @@ analytical & 0.00 & 0.87 [0.74, 0.87] & 0.87 [0.73, 0.88] & 0.94 [0.77, 0.95] \\
 queueing   & 0.00 & 0.00 & 0.00 & 0.71 [0.65, 0.78] \\
 learned    & 0.00 & 0.00 & 0.00 & 0.35 [0.25, 0.52] \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \begin{table}[t]
@@ -632,7 +638,7 @@ cost factor for edge1 (true value after the cut: 2).}
 is within tens of milliseconds, and the ranking it produces is right: every
 node's in-game p95 stays within about 20\,ms of its network RTT. The formula fails
 in one regime, past the knee, and there it fails by two to three orders
-of magnitude (330$\times$ for one match, 510--1500$\times$ for the deployed
+of magnitude (330$\times$ for one match, 500--1500$\times$ for the deployed
 placements), not by a margin a tolerance band could absorb. A placement
 algorithm evaluated only on lightly loaded scenarios, as simulator studies
 usually are, will never see it.
@@ -657,7 +663,7 @@ seconds in which players are still logging in made it distrust a healthy node.
 The load-blind latency model used to rank edge nodes is accurate only below a
 node's saturation point, and above it the error is not a few milliseconds but
 seconds: deployed, its placements left the worst players waiting 18--30\,s
-where a load-aware placement measured 20--39\,ms on the same hardware. A model
+where a load-aware placement measured 16--55\,ms on the same hardware. A model
 learned from measurements predicts latency best; at the four offline
 scenarios a fitted M/M/1 term already placed as well, but run live on the
 same schedule it loaded a node past its knee in all three runs (median
@@ -670,9 +676,12 @@ lesson is
 that the latency term in placement must see load, and that its shape is
 better measured than assumed.
 
-\textbf{Limitations.} \emph{One host, three replicates.} All nodes share one laptop; the bootstrap
+\textbf{Limitations.} \emph{One host, four replicates.} All nodes share one laptop; the bootstrap
 intervals in Section~IV cover the variation between cells, not between
-whole replicates, of which there are only three. At the knees the replicates differ
+whole replicates, of which there are only four. In the fourth, edge1 cost
+about 10--15\% more CPU per player than in the first three; its first
+measurement of edge1 and edge2, taken while the host was in use, cost up to
+1.6$\times$ and was discarded and re-measured (kept as evidence). At the knees the replicates differ
 by 6--80$\times$, so the exact player count of a knee is not established.
 
 \emph{Host power mode.} A node capped at half a core runs in short

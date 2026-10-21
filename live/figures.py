@@ -87,7 +87,9 @@ def fig_ab(runs, path):
     ax.set_yscale("log")
     ax.set_ylabel("worst node's p95, ms")
     ax.set_title("Same arrivals and departures under each controller, real testbed")
-    ax.legend(loc="upper left", fontsize=8)
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi * 30)             # headroom: the legend sits above the curves
+    ax.legend(loc="upper left", fontsize=8, ncol=2)
     tl = runs[0]["tl"]
     axp.plot([x["t"] for x in tl], [x["players"] for x in tl], color=MUTED, lw=1.4)
     axp.set_ylabel("players")

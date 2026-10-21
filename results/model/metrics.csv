@@ -8,15 +8,15 @@ classification@50ms,learned,"Cross-replicate (fit one grid replicate, predict th
 classification@100ms,analytical,"Cross-replicate (fit one grid replicate, predict the other)",0.88,0.5,0.0,6,0,,,,,,50,6,0.0,,0.0,,,100,44,,0
 classification@100ms,queueing,"Cross-replicate (fit one grid replicate, predict the other)",0.96,0.9053030303030303,0.8333333333333334,1,1,,,,,,50,6,0.8333333333333334,,0.8333333333333334,,,100,43,,5
 classification@100ms,learned,"Cross-replicate (fit one grid replicate, predict the other)",0.94,0.821969696969697,0.7272727272727273,2,1,,,,,,50,6,0.8,,0.6666666666666666,,,100,43,,4
-regression,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3)",,,,,,,1325.2160000000001,35.55332570998365,,6.899999999999999,25,,,-0.5024315912159951,,5327.424088255036,0.4477273077672104,,,,
-regression,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3)",,,,,,,5886.924,633.3733549045095,,2.2699999999999996,25,,,0.6361812082399005,,17384.55809835476,0.9520694561500113,,,,
-regression,learned,"Held-out replicate (fit on grid1+grid2, predict grid3)",,,,,,,722.7108000000001,12.580051238872162,,1.2100000000000009,25,,,0.9426769499090573,,3478.2543540005813,0.9751875541038797,,,,
-classification@50ms,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3)",0.76,0.5,0.0,6,0,,,,,,25,6,0.0,,0.0,,,50,19,,0
-classification@50ms,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3)",0.88,0.75,0.6666666666666666,3,0,,,,,,25,6,1.0,,0.5,,,50,19,,3
-classification@50ms,learned,"Held-out replicate (fit on grid1+grid2, predict grid3)",0.96,0.9736842105263157,0.9230769230769231,0,1,,,,,,25,6,0.8571428571428571,,1.0,,,50,18,,6
-classification@100ms,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3)",0.88,0.5,0.0,3,0,,,,,,25,3,0.0,,0.0,,,100,22,,0
-classification@100ms,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3)",1.0,1.0,1.0,0,0,,,,,,25,3,1.0,,1.0,,,100,22,,3
-classification@100ms,learned,"Held-out replicate (fit on grid1+grid2, predict grid3)",0.96,0.8333333333333333,0.8,1,0,,,,,,25,3,1.0,,0.6666666666666666,,,100,22,,2
+regression,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",,,,,,,1376.8937999999998,34.87935470101133,,6.899999999999999,50,,,-0.5234362087211029,,5750.391228320905,0.4731186780386324,,,,
+regression,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",,,,,,,5834.844,425.956648813824,,2.1850000000000014,50,,,0.697510195321978,,17339.74570894591,0.9385477767572428,,,,
+regression,learned,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",,,,,,,968.1618,17.859057835726055,,1.1300000000000008,50,,,0.8887439365062925,,4198.350891990568,0.9391749069533432,,,,
+classification@50ms,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",0.72,0.5,0.0,14,0,,,,,,50,14,0.0,,0.0,,,50,36,,0
+classification@50ms,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",0.84,0.7142857142857143,0.6,8,0,,,,,,50,14,1.0,,0.42857142857142855,,,50,36,,6
+classification@50ms,learned,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",0.92,0.9007936507936507,0.8571428571428571,2,2,,,,,,50,14,0.8571428571428571,,0.8571428571428571,,,50,34,,12
+classification@100ms,analytical,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",0.88,0.5,0.0,6,0,,,,,,50,6,0.0,,0.0,,,100,44,,0
+classification@100ms,queueing,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",1.0,1.0,1.0,0,0,,,,,,50,6,1.0,,1.0,,,100,44,,6
+classification@100ms,learned,"Held-out replicate (fit on grid1+grid2, predict grid3+grid4)",0.96,0.8333333333333333,0.8,2,0,,,,,,50,6,1.0,,0.6666666666666666,,,100,44,,4
 ranking,analytical,ranking,,,,,,4,,,1914.35,,,,,,,,,,,0.75,
 ranking,queueing,ranking,,,,,,4,,,0.0,,,,,,,,,,,1.0,
 ranking,learned,ranking,,,,,,4,,,0.0,,,,,,,,,,,1.0,

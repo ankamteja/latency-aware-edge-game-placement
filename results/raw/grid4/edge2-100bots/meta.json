@@ -1,0 +1,17 @@
+{
+  "tag": "grid4",
+  "target": "edge2",
+  "target_ip": "10.0.2.2",
+  "bots": 100,
+  "players_held": 100,
+  "idle_seconds": 15,
+  "duration_seconds": 90,
+  "bots_start_ms": 1792595549142,
+  "steady_start_ms": 1792595609172,
+  "steady_end_ms": 1792595699299,
+  "cpu_max": "100000 100000",
+  "cpuset": "2-3",
+  "host_mem_available_mb_end": 2284,
+  "server_swap_mb_end": 0,
+  "netem_delay": "delay 7.5ms"
+}

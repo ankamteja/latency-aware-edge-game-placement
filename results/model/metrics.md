@@ -28,31 +28,31 @@ All predictions are out of sample. Positive class = measured p95 above the thres
 | queueing | 0.96 | 0.83 | 0.83 | 0.83 | 0.91 | 5 | 1 | 1 | 43 |
 | learned | 0.94 | 0.80 | 0.67 | 0.73 | 0.82 | 4 | 1 | 2 | 43 |
 
-## Held-out replicate (fit on grid1+grid2, predict grid3)
+## Held-out replicate (fit on grid1+grid2, predict grid3+grid4)
 
 ### Regression
 
 | model | n | MAE ms | RMSE ms | median abs err ms | MAPE % | R² (log10) | Spearman ρ |
 |---|---|---|---|---|---|---|---|
-| analytical | 25 | 1325.2 | 5327.4 | 6.9 | 35.6 | -0.50 | 0.45 |
-| queueing | 25 | 5886.9 | 17384.6 | 2.3 | 633.4 | 0.64 | 0.95 |
-| learned | 25 | 722.7 | 3478.3 | 1.2 | 12.6 | 0.94 | 0.98 |
+| analytical | 50 | 1376.9 | 5750.4 | 6.9 | 34.9 | -0.52 | 0.47 |
+| queueing | 50 | 5834.8 | 17339.7 | 2.2 | 426.0 | 0.70 | 0.94 |
+| learned | 50 | 968.2 | 4198.4 | 1.1 | 17.9 | 0.89 | 0.94 |
 
-### Classification: does p95 exceed 50 ms? (6 of 25 cells do)
-
-| model | accuracy | precision | recall | F1 | balanced acc. | TP | FP | FN | TN |
-|---|---|---|---|---|---|---|---|---|---|
-| analytical | 0.76 | 0.00 | 0.00 | 0.00 | 0.50 | 0 | 0 | 6 | 19 |
-| queueing | 0.88 | 1.00 | 0.50 | 0.67 | 0.75 | 3 | 0 | 3 | 19 |
-| learned | 0.96 | 0.86 | 1.00 | 0.92 | 0.97 | 6 | 1 | 0 | 18 |
-
-### Classification: does p95 exceed 100 ms? (3 of 25 cells do)
+### Classification: does p95 exceed 50 ms? (14 of 50 cells do)
 
 | model | accuracy | precision | recall | F1 | balanced acc. | TP | FP | FN | TN |
 |---|---|---|---|---|---|---|---|---|---|
-| analytical | 0.88 | 0.00 | 0.00 | 0.00 | 0.50 | 0 | 0 | 3 | 22 |
-| queueing | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 3 | 0 | 0 | 22 |
-| learned | 0.96 | 1.00 | 0.67 | 0.80 | 0.83 | 2 | 0 | 1 | 22 |
+| analytical | 0.72 | 0.00 | 0.00 | 0.00 | 0.50 | 0 | 0 | 14 | 36 |
+| queueing | 0.84 | 1.00 | 0.43 | 0.60 | 0.71 | 6 | 0 | 8 | 36 |
+| learned | 0.92 | 0.86 | 0.86 | 0.86 | 0.90 | 12 | 2 | 2 | 34 |
+
+### Classification: does p95 exceed 100 ms? (6 of 50 cells do)
+
+| model | accuracy | precision | recall | F1 | balanced acc. | TP | FP | FN | TN |
+|---|---|---|---|---|---|---|---|---|---|
+| analytical | 0.88 | 0.00 | 0.00 | 0.00 | 0.50 | 0 | 0 | 6 | 44 |
+| queueing | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 6 | 0 | 0 | 44 |
+| learned | 0.96 | 1.00 | 0.67 | 0.80 | 0.83 | 4 | 0 | 2 | 44 |
 
 ## Ranking: does the model pick the measured-best node for one match?
 

@@ -17,16 +17,16 @@ and why the intervals are optimistic.
 | learned - analytical | -5.0 [-7.6, -2.3] | 100% of resamples |
 | queueing - analytical | -4.0 [-6.0, -1.2] | 100% of resamples |
 
-## Held-out replicates (grid3) (25 cells, 2000 paired resamples)
+## Held-out replicates (grid3+grid4) (50 cells, 2000 paired resamples)
 
 | model | median abs error, ms [95% CI] | F1, p95 > 50 ms [95% CI] | F1, p95 > 100 ms [95% CI] |
 |---|---|---|---|
-| analytical | 6.9 [2.6, 15.7] | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
-| queueing | 2.3 [1.3, 12.5] | 0.67 [0.00, 1.00] | 1.00 [1.00, 1.00] |
-| learned | 1.2 [0.8, 3.7] | 0.92 [0.67, 1.00] | 0.80 [0.00, 1.00] |
+| analytical | 6.9 [3.2, 11.7] | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
+| queueing | 2.2 [1.5, 6.5] | 0.60 [0.27, 0.83] | 1.00 [1.00, 1.00] |
+| learned | 1.1 [0.8, 2.8] | 0.86 [0.69, 0.97] | 0.80 [0.36, 1.00] |
 
 | difference in median error | ms [95% CI] | first model better in |
 |---|---|---|
-| learned - queueing | -1.1 [-9.6, +0.3] | 95% of resamples |
-| learned - analytical | -5.7 [-12.8, -1.7] | 100% of resamples |
-| queueing - analytical | -4.6 [-7.5, -0.9] | 100% of resamples |
+| learned - queueing | -1.1 [-4.2, +0.1] | 96% of resamples |
+| learned - analytical | -5.8 [-9.5, -2.1] | 100% of resamples |
+| queueing - analytical | -4.7 [-7.5, -1.4] | 100% of resamples |
