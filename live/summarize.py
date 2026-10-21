@@ -13,6 +13,16 @@ from pathlib import Path
 
 RESULTS = Path(__file__).resolve().parents[1] / "results" / "live"
 BUDGET_MS = 100.0
+# learned-live runs before this one ran without the violation memory (commit
+# 67bb894); they are reported as their own configuration
+MEMORY_FROM = "20261021-112507411"
+
+
+def label(meta, name):
+    p = meta["policy"]
+    if p == "learned-live" and name < MEMORY_FROM:
+        return "learned-live, first version"
+    return p
 
 
 def load(d):
@@ -33,6 +43,39 @@ def fmt_ms(x):
     return f"{x / 1000:.1f} s" if x >= 1000 else f"{x:.0f} ms"
 
 
+def span(vals, fmt):
+    vals = sorted(vals)
+    mid = st.median(vals)
+    return fmt(mid) if len(vals) == 1 else f"{fmt(mid)} [{fmt(vals[0])}, {fmt(vals[-1])}]"
+
+
+def aggregate(runs):
+    """Per scenario and controller: the median over runs, [lowest, highest]."""
+    pct = lambda v: f"{v * 100:.0f}%"
+    out = ["## By configuration", "",
+           "Median over runs, with [lowest, highest] when there is more than one.", ""]
+    for sc in sorted({m["scenario"] for m, *_ in runs}):
+        rows = [r for r in runs if r[0]["scenario"] == sc]
+        cut = rows[0][0]["scenario_params"].get("cut")
+        head = "| scenario | controller | runs | worst p95, median | time over 100 ms | moves |"
+        sep = "|---|---|---|---|---|---|"
+        if cut:
+            head += " after the cut: time over 100 ms |"
+            sep += "---|"
+        out += [head, sep]
+        for lab in sorted({label(m, n) for m, _, _, n in rows}):
+            g = [r for r in rows if label(r[0], r[3]) == lab]
+            line = (f"| {sc} | {lab} | {len(g)} | {span([r[1]['worst_p95_median_ms'] for r in g], fmt_ms)} "
+                    f"| {span([r[1]['time_over_budget_share'] for r in g], pct)} "
+                    f"| {span([r[1]['migrations'] for r in g], lambda v: f'{v:g}')} |")
+            if cut:
+                w = [window(r[2], cut["t"], 1e9) for r in g]
+                line += f" {span([x[1] for x in w if x], pct)} |"
+            out.append(line)
+        out.append("")
+    return out
+
+
 def main():
     runs = []
     for d in sorted(RESULTS.iterdir()):
@@ -46,7 +89,7 @@ def main():
              "Worst = the worst node's p95 over the last 10 s, sampled every tick.", ""]
     for sc in sorted({m["scenario"] for m, *_ in runs}):
         rows = [r for r in runs if r[0]["scenario"] == sc]
-        rows.sort(key=lambda r: (r[0]["policy"], r[3]))
+        rows.sort(key=lambda r: (label(r[0], r[3]), r[3]))
         cut = rows[0][0]["scenario_params"].get("cut")
         lines += [f"## {sc}", ""]
         head = "| run | controller | worst p95, median | time over 100 ms | worst, max | moves | mean reconnect |"
@@ -57,7 +100,7 @@ def main():
         lines += [head, sep]
         for meta, summ, tl, name in rows:
             gap = summ.get("migration_gap_mean_s")
-            row = (f"| {name} | {meta['policy']} | {fmt_ms(summ['worst_p95_median_ms'])} "
+            row = (f"| {name} | {label(meta, name)} | {fmt_ms(summ['worst_p95_median_ms'])} "
                    f"| {summ['time_over_budget_share'] * 100:.0f}% | {fmt_ms(summ['worst_p95_max_ms'])} "
                    f"| {summ['migrations']} | {f'{gap:.1f} s' if gap else '-'} |")
             if cut:
@@ -65,6 +108,7 @@ def main():
                 row += (f" {fmt_ms(w[0])} / {w[1] * 100:.0f}% / {fmt_ms(w[2])} |" if w else " - |")
             lines.append(row)
         lines.append("")
+    lines += aggregate(runs)
     out = RESULTS / "summary.md"
     out.write_text("\n".join(lines))
     print("\n".join(lines))
