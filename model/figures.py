@@ -163,13 +163,18 @@ def fig5():
     models = [m for m in ("analytical", "queueing", "learned") if any(r["model"] == m for r in rows)]
     fig, ax = plt.subplots(figsize=(7, 4.3))
     w = 0.8 / len(models)
+    tags = sorted({r["tag"] for r in rows})
     for j, m in enumerate(models):
-        ys = []
+        runs = []                       # every deployment round's measurement
         for s in scen:
-            r = [x for x in rows if x["model"] == m and int(x["players"]) == s]
-            ys.append(float(r[0]["measured_worst_p95_ms"]) if r else np.nan)
+            runs.append([float(x["measured_worst_p95_ms"]) for x in rows
+                         if x["model"] == m and int(x["players"]) == s])
+        ys = [np.median(v) if v else np.nan for v in runs]
         xs = np.arange(len(scen)) + (j - (len(models) - 1) / 2) * w
         ax.bar(xs, ys, width=w * 0.92, color=MODEL_COLOR[m], label=f"{m} model", zorder=3)
+        if len(tags) > 1:               # each round as a dot, the bar is the median
+            for x, v in zip(xs, runs):
+                ax.scatter([x] * len(v), v, s=10, color=INK, zorder=4)
     ax.set_yscale("log")
     ax.set_xticks(np.arange(len(scen)), [f"{s} players" for s in scen])
     ax.set_ylabel("worst node's measured p95 (ms, log)")

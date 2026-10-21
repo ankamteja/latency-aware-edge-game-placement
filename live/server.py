@@ -199,6 +199,22 @@ def read_json(path):
         return None
 
 
+
+def deployments_by_placement(rows):
+    """One row per deployed placement: the median over deployment rounds."""
+    groups = {}
+    for d in rows:
+        groups.setdefault((d["deployment"], d["model"], d["players"]), []).append(d)
+    out = []
+    for g in groups.values():
+        vals = sorted(float(d["measured_worst_p95_ms"]) for d in g)
+        r = dict(g[0])
+        r["measured_worst_p95_ms"] = str(vals[len(vals) // 2] if len(vals) % 2
+                                         else (vals[len(vals) // 2 - 1] + vals[len(vals) // 2]) / 2)
+        r["rounds"] = str(len(g))
+        out.append(r)
+    return out
+
 def read_csv(path):
     with open(path, newline="") as f:
         return list(csv.DictReader(f))
@@ -214,7 +230,7 @@ def api_offline():
     deploy = read_csv(REPO / "results" / "placement" / "deployments.csv")
     plan = json.loads((REPO / "results" / "placement" / "plan.json").read_text())
     chosen = {e["deployment"] for e in plan["entries"]}
-    deploy = [d for d in deploy if d["deployment"] in chosen]
+    deploy = deployments_by_placement([d for d in deploy if d["deployment"] in chosen])
     metrics = read_csv(REPO / "results" / "model" / "metrics.csv")
     return {"curves": curves, "deployments": deploy, "metrics": metrics}
 

@@ -87,10 +87,15 @@ def score(tag):
         })
     import csv
     path = OUT / "deployments.csv"
+    # one file for every deployment round: rows of other tags are kept
+    kept = []
+    if path.exists():
+        with path.open(newline="") as f:
+            kept = [r for r in csv.DictReader(f) if r["tag"] != tag]
     with path.open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader()
-        w.writerows(rows)
+        w.writerows(kept + rows)
     print(f"{'players':>7}  {'model':10s}  {'placement':38s} {'pred worst':>10} {'meas worst':>10} {'pooled p95':>10} kicks")
     for r in rows:
         print(f"{r['players']:>7}  {r['model']:10s}  {r['placement']:38s} {r['predicted_worst_p95_ms']:>10} "
