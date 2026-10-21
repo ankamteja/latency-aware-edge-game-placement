@@ -89,7 +89,7 @@ tail-heavy - delay grows like `1/(1 − utilization)`, flat until the node is
 nearly saturated, then vertical - so it does not drop cleanly into a closed-form
 placement objective, and the simulators used to evaluate placement inherit the
 same load-blind model. Second, cloud nodes rarely saturate (you autoscale first),
-so the coupling stayed invisible; edge nodes are small and capped and *cannot*
+so the coupling stayed invisible; edge nodes are small and capped and have little room to
 scale out, so queueing delay resurfaces exactly where placement is supposed to
 help.
 
@@ -97,14 +97,15 @@ help.
 *empirically* from a real interactive workload, then use it as the latency term
 that *ranks* candidate nodes - rather than reacting to load after placement, or
 assuming its shape in closed form. The claim is not "nobody uses load"; it is
-"nobody measures the load→latency relationship for a tail-sensitive interactive
-workload and puts it into the placement ranking."
+that we found no placement work that measures the load→latency relationship
+for a tail-sensitive interactive workload and puts it into the placement
+ranking.
 
-The measurements below are the first evidence that the omitted term is not a
-correction but the dominant one: on a 0.5-core node, tick time is flat from 8
-to 40 players (6.9 → 16.5 ms) and then quadruples by 60 (69.1 ms), with CPU
-pinned at its quota exactly where it turns. A closed form fitted to the flat
-part predicts nothing about the cliff.
+The measurements show the omitted term is not a correction but the dominant
+one: on the 0.5-core node the in-game p95 is 6 ms at 1 player and 14.5 ms at
+40, then 6.7-8.6 s at 60, while ICMP never moves more than 0.3 ms (grid
+replicates 1 and 2, [docs/08 §8.2](docs/08-results.md)). A closed form fitted
+to the flat part predicts nothing about the cliff.
 
 ## Layout
 
@@ -127,10 +128,10 @@ docs/         full documentation, written for a beginner
 ## The testbed
 
 ```
-   client ──eth1── 10.0.1.0/30 ──── edge1   0.5 core    5.10 ms RTT
-     bots ──eth2── 10.0.2.0/30 ──── edge2   1 core     15.29 ms
-   probes ──eth3── 10.0.3.0/30 ──── edge3   2 cores    30.27 ms
-          ──eth4── 10.0.4.0/30 ──── cloud   4 cores    40.29 ms
+   client ──eth1── 10.0.1.0/30 ──── edge1   0.5 core    5.16 ms RTT
+     bots ──eth2── 10.0.2.0/30 ──── edge2   1 core     15.24 ms
+   probes ──eth3── 10.0.3.0/30 ──── edge3   2 cores    30.25 ms
+          ──eth4── 10.0.4.0/30 ──── cloud   4 cores    40.22 ms
 ```
 
 Four candidates, so the question is a *ranking*, not an A/B. Which IP the bots
@@ -141,8 +142,9 @@ distance is a runtime knob - `./netem.sh ladder` gives the realistic tradeoff
 where the closest node is the weakest, `./netem.sh flat` puts every edge at the
 same distance so capacity can be isolated from distance, with no redeploy.
 
-Every number above is measured with `ping`, 0% loss, mdev < 0.1 ms - never the
-configured value.
+Every number above is measured with `ping` (`placement/nodes.json`, the values
+every model uses; Table I of the report rounds them), 0% loss, mdev < 0.1 ms -
+never the configured value.
 
 ## Running it
 
@@ -230,8 +232,8 @@ someone, follow [the demo guide](docs/demo-guide/guide.pdf).
 | same 13-min schedule, load-blind controller | 1 058 ms | 53% | 0 |
 | same 13-min schedule, queueing (M/M/1) controller | 166 ms | 53% | 11 |
 | same 13-min schedule, learned controller | 33 ms | 18% | 10 |
-| edge1's CPU halved mid-run, queueing / learned (offline), 3 runs | 0.5-7.7 s | 74-83% | 4 |
-| edge1's CPU halved mid-run, learned corrected live, 2 runs | 24-43 ms | 2-14% | 8-12 |
+| edge1's CPU halved mid-run, queueing / learned (offline), 3 runs, whole run | 0.5-7.7 s | 74-83% | 4 |
+| edge1's CPU halved mid-run, learned corrected live, 2 runs, whole run | 24-43 ms | 2-14% | 8-12 |
 
 The load-blind controller never moves a match. Queueing, whose curve depends
 on utilization alone, loads edge2 to 80 players, past its knee; the learned
@@ -344,7 +346,7 @@ the artefact and its fix in
 - [x] Latency predictor trained on measured data, compared against the
       analytical and M/M/1 models on prediction and on node ranking
 - [x] Each model's placement deployed for real and measured
-- [x] Bootstrap confidence intervals on every model score
+- [x] Bootstrap confidence intervals on the offline model scores
 - [x] Real-time placement controller with a dashboard, run under each model on
       the same schedule, plus a node that silently loses half its CPU
 - [x] A model corrected from live measurements, with unit tests

@@ -45,7 +45,7 @@ that corrects itself from live measurements moves players off it.
 
 Putting a game server at the network edge shortens the path to its players.
 Edge nodes, however, are small: a base-station or street-cabinet server has a
-fraction of a data-centre machine's compute and cannot scale out. When enough
+fraction of a data-centre machine's compute and little room to add more. When enough
 players are placed on one, its CPU saturates and the delay added inside the
 server grows without bound, while the network delay it saves is fixed.
 
@@ -112,7 +112,8 @@ EdgeCloudSim~\cite{sonmez2018edgecloudsim} build on CloudSim;
 YAFS~\cite{lera2019yafs} on a discrete-event library and network graphs;
 PureEdgeSim~\cite{mechalikh2021pureedgesim} targets large heterogeneous
 deployments. All compute latency from configured link and processing
-parameters. They are indispensable for scale, but an algorithm evaluated in
+parameters: how processing slows with load is whatever the configured model
+says, not something measured from the workload. They are indispensable for scale, but an algorithm evaluated in
 them is graded by the same assumptions it was designed with.
 
 \textbf{Closing the simulator gap.} SimTune~\cite{tuli2022simtune} uses a
@@ -132,6 +133,15 @@ the setting studied here. Service migration in edge computing is often
 decided from the user's distance to the serving node~\cite{wang2019migration};
 our live controller migrates on measured and predicted server latency
 instead.
+
+\textbf{Learned models in resource management.} Learning from measured
+behaviour instead of assuming a closed form is established in the data
+centre: Resource Central~\cite{cortez2017resourcecentral} predicts virtual
+machine behaviour from history to guide allocation, and
+Decima~\cite{mao2019decima} learns cluster scheduling policies. We apply the
+same idea to a narrower question, the latency term inside edge placement,
+and keep the learned model small (three features) so that it can be
+compared directly with the closed forms.
 
 \textbf{Queueing-aware placement.} Closed-form queueing terms such as
 $s/(1-u)$ for utilization $u$ are the standard way to add load to a latency
@@ -198,6 +208,10 @@ All three models predict p95 in-game latency for a node and a player count.
 \emph{Analytical}: (\ref{eq:analytical}) with a 100\,B message over 1\,Gb/s.
 \emph{Queueing}: RTT\,$+\,s/(1-u)$, $u$ = players\,/\,(100\,$\times$\,cores),
 with $s$ the median of delay\,$\times(1-u)$ over stable cells (2.4\,ms).
+\emph{Learned}: scikit-learn gradient-boosted trees (300 trees, depth 3,
+learning rate 0.05) on utilization, players and cores, predicting the
+logarithm of the server delay (p95 minus the network RTT), fitted on the
+first two grid replicates.
 \emph{Learned}: RTT plus a server delay predicted by gradient-boosted trees on
 utilization, players and cores.
 
@@ -205,8 +219,10 @@ utilization, players and cores.
 
 \subsection{The network is flat; the game thread is not}
 Fig.~\ref{fig:grid} shows measured p95 per node against player count, with
-the analytical prediction drawn flat. Across all 50 grid cells ICMP p95 stays
-within 0.3\,ms of the configured RTT. edge1 stays within 10\,ms of its 5\,ms
+the analytical prediction drawn flat. Across the 50 cells of the two fitting
+replicates ICMP p95 stays within 0.3\,ms of the configured RTT. netem fixes
+the link delay, so this mainly shows that the hosts' network stacks added
+nothing under load: whatever grows, grows above the network. edge1 stays within 10\,ms of its 5\,ms
 RTT up to 40 players and reaches 6.7--8.6\,s at 60, where its tick time jumps
 from 6.5 to 46\,ms. edge2 is flat to 60 players (23\,ms); its knee is at 80
 players (one replicate already measured 2.7\,s there, the other two
@@ -307,7 +323,11 @@ each model the optimum is found by exhaustive search.
 
 \textbf{Deployment.} Every resulting placement is deployed on the testbed with
 all loaded nodes running at once, and measured with the same streams as the
-grid. No model's prediction is used to grade any model.
+grid. No model's prediction is used to grade any model. Each placement was
+deployed once. With every node loaded at the same time the numbers differ
+from the grid's single-node cells: edge1 with 40 players measured 26\,ms
+deployed against 14.5\,ms in the grid, a difference we have not isolated
+(the client generates load for all nodes at once, and 40 is edge1's knee).
 
 \begin{table}[t]
 \centering
@@ -360,24 +380,46 @@ in the model that drives the controller.
 \textbf{Same schedule, three controllers.} A match of ten players arrives
 every 25\,s up to 140 players, holds for 150\,s, and leaves until 60 remain
 (13\,min). Table~\ref{tab:live} and Fig.~\ref{fig:live}. The analytical
-controller never moves a match: edge1 fills to 100 players and its p95 stays
+controller never moves a match, by construction: its prediction for a node
+does not change with load, so no move ever looks like an improvement. The
+run measures the cost of that: edge1 fills to 100 players and its p95 stays
 above 10\,s until departures empty it. The queueing controller moves matches
 as often as the learned one, but its curve depends on utilization alone and
-rates edge2 at 80 players ($u=0.8$) at 27\,ms; edge2's knee is between 80
-and 100, and live it sat at 1.8--3.4\,s for about 200\,s. The learned model
+rates edge2 at 80 players ($u=0.8$) at 27\,ms; edge2's knee is at 80 players,
+and live it sat at 1.8--3.4\,s for about 200\,s. The learned model
 predicts 65\,ms there, stops edge2 at 70 and uses edge3: the effect of
 Fig.~\ref{fig:util} deciding a placement. Part of the gap is chance at a
 knee: both runs held edge1 at exactly 40 players, which stayed backlogged
 in one run and recovered in the other. The learned controller keeps the
 worst player's p95 at a median of 33\,ms; its excursions over 100\,ms are the
-10--25\,s after each new match lands on edge1 and before it is moved away.
-Scored on each run's own steady 10\,s windows (load unchanged for the whole
-window), the predictions of whether a node
-breaks 100\,ms reach F1 0.00 for every offline model in the queueing run
-(36 of 127 windows over budget, all at loads the offline curves call
-healthy) and 0.78 for a variant of the learned model that corrects itself
-from live measurements; in the analytical run, 0.00 (analytical), 0.87
-(queueing, learned) and 0.95 (live-corrected).
+10--25\,s after each new match lands on edge1 and before it is moved away. Each
+move costs its ten players a reconnect: about 6\,s from the stop until the
+last of them sends a sample from the new node, in every run.
+
+Every model is also scored in the background on each run. A \emph{window} is
+10\,s of unchanged load on one node, so a run yields one window per busy
+node every 10\,s; each is graded against every model's prediction for it,
+made before the window was seen. Table~\ref{tab:shadow} gives F1 for ``this
+node is over 100\,ms''. In the queueing run the windows over budget are
+edge1 backlogged at 40 players and edge2 at 80: loads every offline curve
+calls healthy. Only the model that corrects itself from the measurements
+catches them.
+
+\begin{table}[t]
+\centering
+\caption{F1 for ``node over 100\,ms'', every model scored on the same live
+windows}
+\label{tab:shadow}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lrrrr}
+\toprule
+run (windows, over 100\,ms) & analyt. & queue. & learned & live-corr. \\
+\midrule
+analytical in control (91, 28) & 0.00 & 0.87 & 0.87 & 0.95 \\
+queueing in control (127, 36)  & 0.00 & 0.00 & 0.00 & 0.78 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -468,7 +510,7 @@ grows with the number of players; in that run the learned model's more
 accurate curve kept it off. Accuracy matters most where a budget has to be checked near a knee,
 not where nodes are only ranked. The
 live runs add a requirement no offline model meets: capacity is not a
-constant. A setting on the host cut it threefold in our own rig (Section~\ref{sec:threats}), and
+constant. A setting on the host cut it roughly threefold in our own rig (Section~\ref{sec:threats}), and
 in our runs a CPU cut no model was told about was handled only by a
 controller that kept comparing its predictions with what it measured.
 
