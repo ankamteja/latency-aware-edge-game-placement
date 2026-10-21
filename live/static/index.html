@@ -295,7 +295,7 @@ live/load.sh stop</pre>
     <!-- OFFLINE -->
     <section class="page" id="page-offline" aria-labelledby="h-off">
       <h1 class="ptitle" id="h-off">Measured results</h1>
-      <p class="psub">From the controlled grid (two replicates) and the deployed placements. Full write-up in docs/08-results.md.</p>
+      <p class="psub">From the controlled grid (two replicates to fit on, a third held out to test on) and the deployed placements. Full write-up in docs/08-results.md.</p>
       <div class="grid g11">
         <div class="card">
           <div class="ch"><span class="ct">p95 against players, per node</span><span class="legend" id="lg-grid"></span></div>
@@ -310,9 +310,9 @@ live/load.sh stop</pre>
         </div>
       </div>
       <div class="card mt">
-        <div class="ch"><span class="ct">Model scores, out of sample</span><span class="hint">fit on one replicate, scored on the other</span></div>
+        <div class="ch"><span class="ct">Model scores, out of sample</span><span class="hint">no cell is scored by a model fitted on it</span></div>
         <div class="cb tblwrap">
-          <table aria-label="Model metrics"><thead><tr><th>model</th><th>median err</th><th>MAE</th><th>R² log</th><th>Spearman</th><th>F1 at 50 ms</th><th>F1 at 100 ms</th><th>accuracy at 100 ms</th></tr></thead><tbody id="met"></tbody></table>
+          <table aria-label="Model metrics"><thead><tr><th>test</th><th>model</th><th>median err</th><th>MAE</th><th>R² log</th><th>Spearman</th><th>F1 at 50 ms</th><th>F1 at 100 ms</th><th>accuracy at 100 ms</th></tr></thead><tbody id="met"></tbody></table>
         </div>
       </div>
     </section>
@@ -560,9 +560,11 @@ async function loadOffline(){
     {color:css('--n-'+n),points:o.curves[n]},{color:css('--n-'+n),dash:true,w:1,points:[[0,rtt[n]],[100,rtt[n]]]}])});
   $("dep").innerHTML=o.deployments.map(d=>{const pl=d.placement.split(",").map(x=>x.split("=")[1]).join("/");const m=+d.measured_worst_p95_ms;
     return `<tr><td>${d.players}</td><td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+d.model)}"></span>${MLABEL[d.model]}</td><td>${pl}</td><td>${fmtMs(+d.predicted_worst_p95_ms)}</td><td class="${lvl(m,100)}">${fmtMs(m)}</td></tr>`}).join("");
-  const cr=o.metrics.filter(r=>r.split.startsWith("Cross"));
-  $("met").innerHTML=["analytical","queueing","learned"].map(m=>{const g=k=>cr.find(r=>r.model===m&&r.kind===k)||{};const r=g("regression"),c50=g("classification@50ms"),c100=g("classification@100ms");
-    return `<tr><td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+m)}"></span>${MLABEL[m]}</td><td>${fmtMs(+r.median_abs_err_ms)}</td><td>${fmtMs(+r.mae_ms)}</td><td>${f2(r.r2_log10)}</td><td>${f2(r.spearman_rho)}</td><td>${f2(c50.f1)}</td><td>${f2(c100.f1)}</td><td>${f2(c100.accuracy)}</td></tr>`}).join("");
+  const tests=[["Cross","cross-replicate, 50 cells"],["Held-out","held-out grid3, 25 cells"]];
+  $("met").innerHTML=tests.flatMap(([pre,label])=>{const cr=o.metrics.filter(r=>r.split.startsWith(pre));
+    if(!cr.length)return [];
+    return ["analytical","queueing","learned"].map((m,i)=>{const g=k=>cr.find(r=>r.model===m&&r.kind===k)||{};const r=g("regression"),c50=g("classification@50ms"),c100=g("classification@100ms");
+    return `<tr><td class="hint">${i?"":label}</td><td><span class="sw" style="display:inline-block;margin-right:6px;background:${css('--m-'+m)}"></span>${MLABEL[m]}</td><td>${fmtMs(+r.median_abs_err_ms)}</td><td>${fmtMs(+r.mae_ms)}</td><td>${f2(r.r2_log10)}</td><td>${f2(r.spearman_rho)}</td><td>${f2(c50.f1)}</td><td>${f2(c100.f1)}</td><td>${f2(c100.accuracy)}</td></tr>`})}).join("");
 }
 window.addEventListener("resize",()=>{if(last&&!paused)renderLive(last)});
 </script>

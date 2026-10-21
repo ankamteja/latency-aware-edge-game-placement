@@ -96,7 +96,9 @@ controller/   collect.sh (grid cells), deploy.sh (one placement, all nodes at on
               grid.sh, deploy_plan.sh, warmup.sh, capacity.sh
 dataset/      build_dataset.py - joins the raw streams into labelled rows
 placement/    latency models, placement algorithms, the deploy-and-score experiment
-model/        evaluate.py (prediction + ranking tests), figures.py
+model/        evaluate.py (prediction + ranking tests), metrics.py, figures.py
+live/         real-time placement controller, dashboard, terminal load tool
+tests/        unit tests for the live controller (python3 -m pytest -q tests)
 data/         the measured dataset: dataset.csv (30 s windows), cells.csv
 results/      raw measurement streams, model evaluation, deployment scores
 figures/      generated figures for the write-up
@@ -306,8 +308,12 @@ with nothing but `grep` and `sort`.
 [docs/](docs/) covers the project from zero: the concepts
 ([01](docs/01-concepts.md)), the testbed ([02](docs/02-topology.md)), every
 shell command ([03](docs/03-commands.md)), the measurement design
-([04](docs/04-metrics.md)), the runbook ([05](docs/05-runbook.md)), and every
-failure hit so far with its fix ([06](docs/06-troubleshooting.md)).
+([04](docs/04-metrics.md)), the runbook ([05](docs/05-runbook.md)), every
+failure hit so far with its fix ([06](docs/06-troubleshooting.md)), node
+capacity ([07](docs/07-capacity.md)), the results and their limits
+([08](docs/08-results.md)), and the live controller
+([09](docs/09-live.md)). To show the system to someone, follow the demo
+guide: [docs/demo-guide/guide.pdf](docs/demo-guide/guide.pdf).
 
 ## License
 
