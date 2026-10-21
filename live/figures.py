@@ -45,8 +45,10 @@ def load(run_dir):
 def representative(scenario, policies):
     """For each policy, the finished run whose worst-player median is the
     median of its runs: the typical run, not the luckiest or the newest.
-    learned-live runs from before the violation memory are left out."""
-    from live.summarize import MEMORY_FROM
+    learned-live runs from before the violation memory are left out. In a
+    capacity-drop, runs whose controller had already emptied the cut node
+    are left out too: they cannot show the cut being noticed (docs/09 9.6)."""
+    from live.summarize import MEMORY_FROM, at_cut
     by = {}
     for d in sorted(RESULTS.iterdir()):
         if not (d / "summary.json").exists() or not (d / "meta.json").exists():
@@ -57,6 +59,9 @@ def representative(scenario, policies):
                 or r["summary"].get("status") != "finished":
             continue
         if p == "learned-live" and d.name < MEMORY_FROM:
+            continue
+        cut = r["meta"]["scenario_params"].get("cut")
+        if cut and at_cut(r["tl"], cut)[1] == 0:
             continue
         by.setdefault(p, []).append(r)
     out = []
@@ -133,7 +138,7 @@ def main():
     ap.add_argument("--ab", nargs="*", help="run dirs for fig6 (default: the typical run per controller)")
     ap.add_argument("--drop", nargs="*", help="run dirs for fig7 (default: the typical run per controller)")
     a = ap.parse_args()
-    ab = [load(d) for d in a.ab] if a.ab else representative("standard", ["analytical", "queueing", "learned"])
+    ab = [load(d) for d in a.ab] if a.ab else representative("standard", ["analytical", "queueing", "learned", "learned-live"])
     drop = [load(d) for d in a.drop] if a.drop else representative("capacity-drop",
                                                                   ["queueing", "learned", "learned-live"])
     if ab:

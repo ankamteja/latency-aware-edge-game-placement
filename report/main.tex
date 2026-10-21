@@ -612,8 +612,9 @@ live, with memory    & 3 & 30, 0, 10  & 9\% [2, 14]   & 6\% [4, 13] \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{fig7_live_capacity_drop.png}
-\caption{edge1's CPU halved at 220\,s (dotted). Top: edge1's p95 under each
-controller. Middle: players each leaves on edge1. Bottom: the live model's
+\caption{edge1's CPU halved at 220\,s (dotted). Each controller's median
+run; for the live model, the median of the runs in which edge1 still held
+players at the cut. Top: edge1's p95 under each controller. Middle: players each leaves on edge1. Bottom: the live model's
 cost factor for edge1 (true value after the cut: 2).}
 \label{fig:drop}
 \end{figure}
