@@ -86,7 +86,12 @@ This paper measures that error instead of modelling it. Our contributions:
 \textbf{Service placement in fog and edge.} Surveys of the service placement
 problem~\cite{aitsalaht2019overview} and of microservice
 placement~\cite{pallewatta2023taxonomy} catalogue objectives, constraints and
-algorithms. Latency is commonly modelled as in (\ref{eq:analytical}), with
+algorithms. Placement formulations such as the integer program of Skarlat
+et al.~\cite{skarlat2017placement} and the QoS-aware deployment search of
+Brogi and Forti~\cite{brogi2017fog} check latency against the links between
+nodes, and the mobile edge computing literature~\cite{mao2017mec} models
+computation delay from CPU cycles and clock rate rather than from measured
+contention. Latency is commonly modelled as in (\ref{eq:analytical}), with
 server-side processing either omitted or taken as a constant per request.
 
 \textbf{Simulators.} iFogSim~\cite{gupta2017ifogsim} and
@@ -104,6 +109,16 @@ resource management. We take the opposite route: we keep no simulator, learn
 the load--latency relationship directly from measurements of an interactive
 workload, and evaluate on worst-player tail latency rather than mean
 response time.
+
+\textbf{Games and migration.} Player tolerance to latency depends on the
+action: precise, fast-paced actions are the least tolerant~\cite{claypool2006latency},
+which is why we grade on the worst player's tail. Measurements of cloud gaming
+latency found much of the population too far from cloud data centres and
+motivated serving games from closer infrastructure~\cite{choy2012brewing},
+the setting studied here. Service migration in edge computing is often
+decided from the user's distance to the serving node~\cite{wang2019migration};
+our live controller migrates on measured and predicted server latency
+instead.
 
 \textbf{Queueing-aware placement.} Closed-form queueing terms such as
 $s/(1-u)$ for utilization $u$ are the standard way to add load to a latency
