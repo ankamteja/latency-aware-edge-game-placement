@@ -36,6 +36,7 @@ def make(cls=lp.Policy, model=None, gains=None):
     p.gains = gains or lp.Gains()
     if cls is lp.LivePolicy:
         p.log_c = {n: 0.0 for n in p.nodes}
+        p.broke = {}
     return p
 
 
@@ -194,3 +195,32 @@ def test_close_gap_without_move_is_noop():
     m = Match(1, "edge1", 0, since=0.0, tail=None)
     m.close_gap(now=10.0)
     assert m.gaps == []
+
+
+def test_live_policy_keeps_factor_through_quiet_windows():
+    # edge1 learned to be twice as slow; then it carries a light load that is
+    # flat for every c. Those windows say nothing about c and must not undo it.
+    p = make(lp.LivePolicy)
+    for _ in range(8):
+        p.observe("edge1", 20, Knee().predict(p.nodes["edge1"], 40))
+    learned = p.capacity_factor("edge1")
+    for _ in range(20):
+        p.observe("edge1", 5, Knee().predict(p.nodes["edge1"], 5))
+    assert p.capacity_factor("edge1") == pytest.approx(learned)
+
+
+def test_live_policy_remembers_a_measured_violation(monkeypatch):
+    p = make(lp.LivePolicy)
+    clock = [1000.0]
+    monkeypatch.setattr(lp.time, "time", lambda: clock[0])
+    p.observe("edge1", 30, 900.0)              # edge1 broke at 30 players
+    assert p.predict("edge1", 30) >= 900.0
+    assert p.predict("edge1", 40) >= 900.0
+    assert p.predict("edge1", 20) < 900.0      # lighter loads are not pinned to it
+    # the controller will not move a match back onto it ...
+    load = {"edge1": 20, "edge2": 10}
+    mv = p.rebalance(load, {1: ("edge1", 0.0), 2: ("edge1", 0.0), 3: ("edge2", 0.0)},
+                     clock[0], 10)
+    assert mv is None or mv["dst"] != "edge1"
+    clock[0] += lp.LivePolicy.HOLD_S + 1       # ... until the memory expires
+    assert p.predict("edge1", 30) < 900.0

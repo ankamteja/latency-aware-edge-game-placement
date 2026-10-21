@@ -19,6 +19,7 @@ latency for a node at any load, so it never sees a reason to move a match off
 a crowded node; the only moves it ever makes are toward a nearer node.
 """
 import math
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -119,17 +120,22 @@ class LivePolicy(Policy):
     they were fitted on, where they cannot extrapolate.)
 
     c is the value in [0.5, 4] that best explains the window, with a small
-    pull toward 1 (in the flat region every c explains the window equally
-    well, and the evidence should not move the estimate), smoothed with an
-    exponential moving average in log space."""
+    pull toward 1, smoothed with an exponential moving average in log space.
+    A window is used only if c could change its prediction by 1.5x or more:
+    in the flat region every c explains it equally well, and it must not move
+    the estimate."""
     GRID = np.geomspace(0.5, 4.0, 43)
     ALPHA = 0.5
     PRIOR = 0.08
+    INFORMATIVE = math.log(1.5)   # a window counts if c can move the prediction 1.5x
+    VIOLATION_MS = 100.0          # a window this slow is remembered ...
+    HOLD_S = 300.0                # ... for this long
 
     def __init__(self, nodes=None, gains=None):
         super().__init__("learned", nodes, gains)
         self.name = "learned-live"
         self.log_c = {n: 0.0 for n in self.nodes}
+        self.broke = {}           # node -> (players, measured p95, time) of a violation
 
     def capacity_factor(self, node):
         return math.exp(self.log_c[node])
@@ -140,16 +146,36 @@ class LivePolicy(Policy):
     def predict(self, node, players):
         if not players:
             return None
-        return self._raw(node, players, self.capacity_factor(node))
+        pred = self._raw(node, players, self.capacity_factor(node))
+        # One scale factor only approximates a node whose knee moved: light
+        # windows below the new knee look healthy and pull c back down. A
+        # violation actually measured is not forgotten that easily: at that
+        # load or more the node is predicted at least that slow until the
+        # memory expires, after which the controller may probe it again.
+        b = self.broke.get(node)
+        if b and players >= b[0] and time.time() - b[2] < self.HOLD_S:
+            pred = max(pred, b[1])
+        return pred
 
     def observe(self, node, players, measured_p95):
         if not players or measured_p95 is None or measured_p95 <= 0:
             return
         y = math.log(measured_p95)
-        cost = [abs(math.log(self._raw(node, players, c)) - y)
-                + self.PRIOR * abs(math.log(c)) for c in self.GRID]
+        preds = [math.log(self._raw(node, players, c)) for c in self.GRID]
+        # In the flat region every c predicts nearly the same latency, so the
+        # window carries no evidence about c. Updating anyway pulls the
+        # estimate back to the prior, the controller then moves a match back
+        # onto a node that is still slow, and that match pays for it.
+        if max(preds) - min(preds) < self.INFORMATIVE:
+            return
+        cost = [abs(p - y) + self.PRIOR * abs(math.log(c)) for p, c in zip(preds, self.GRID)]
         best = math.log(self.GRID[int(np.argmin(cost))])
         self.log_c[node] = (1 - self.ALPHA) * self.log_c[node] + self.ALPHA * best
+        if measured_p95 > self.VIOLATION_MS:
+            now, b = time.time(), self.broke.get(node)
+            # keep the lightest load seen to break the budget
+            if b is None or players <= b[0] or now - b[2] >= self.HOLD_S:
+                self.broke[node] = (players, measured_p95, now)
 
 
 POLICIES = ("analytical", "queueing", "learned", "learned-live")
