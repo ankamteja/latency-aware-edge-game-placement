@@ -69,7 +69,7 @@ def fig_ab(runs, path):
     ax.text(2, BUDGET_MS * 1.12, "100 ms budget", color="#d05a52", fontsize=8)
     ax.set_yscale("log")
     ax.set_ylabel("worst node's p95, ms")
-    ax.set_title("Same arrivals and departures, two controllers, real testbed")
+    ax.set_title("Same arrivals and departures under each controller, real testbed")
     ax.legend(loc="upper left", fontsize=8)
     tl = runs[0]["tl"]
     axp.plot([x["t"] for x in tl], [x["players"] for x in tl], color=MUTED, lw=1.4)
@@ -119,8 +119,9 @@ def main():
     ap.add_argument("--ab", nargs="*", help="run dirs for fig6 (default: newest standard runs)")
     ap.add_argument("--drop", nargs="*", help="run dirs for fig7 (default: newest capacity-drop runs)")
     a = ap.parse_args()
-    ab = [load(d) for d in a.ab] if a.ab else newest("standard", ["analytical", "learned"])
-    drop = [load(d) for d in a.drop] if a.drop else newest("capacity-drop", ["learned", "learned-live"])
+    ab = [load(d) for d in a.ab] if a.ab else newest("standard", ["analytical", "queueing", "learned"])
+    drop = [load(d) for d in a.drop] if a.drop else newest("capacity-drop",
+                                                          ["queueing", "learned", "learned-live"])
     if ab:
         fig_ab(ab, FIG / "fig6_live_ab.png")
         print("wrote", FIG / "fig6_live_ab.png", [r["dir"].name for r in ab])

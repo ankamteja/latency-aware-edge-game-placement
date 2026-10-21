@@ -197,14 +197,17 @@ someone, follow [the demo guide](docs/demo-guide/guide.pdf).
 | run, worst node's p95 | median | time over 100 ms | moves |
 |---|---|---|---|
 | same 13-min schedule, load-blind controller | 1 058 ms | 53% | 0 |
+| same 13-min schedule, queueing (M/M/1) controller | 166 ms | 53% | 11 |
 | same 13-min schedule, learned controller | 33 ms | 18% | 10 |
-| edge1's CPU halved mid-run, learned (offline) | 528 ms | 74% | 4 |
-| edge1's CPU halved mid-run, learned corrected live | 24 ms | 2.2% | 8 |
+| edge1's CPU halved mid-run, queueing / learned (offline), 3 runs | 0.5-7.7 s | 74-83% | 4 |
+| edge1's CPU halved mid-run, learned corrected live, 2 runs | 24-43 ms | 2-14% | 8-12 |
 
-The load-blind controller never moves a match; the offline learned model does
-not notice a node that silently got slower; a model that keeps correcting
-itself from measurements does. Each run was done once; read
-[§9.6](docs/09-live.md) for what each number does and does not show.
+The load-blind controller never moves a match. Queueing, whose curve depends
+on utilization alone, loads edge2 to 80 players, past its knee; the learned
+model stops at 70. Neither offline model notices a node that silently got
+slower; a model that keeps correcting itself from measurements does. Runs are
+single or paired; read [§9.6](docs/09-live.md) for what each number does and
+does not show.
 
 ![the same schedule under each controller](figures/fig6_live_ab.png)
 
