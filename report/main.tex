@@ -335,7 +335,10 @@ players, the ICMP p95 stays at 5.1--5.3\,ms and the TCP handshake at
 outside the game loop, moves only at 60 players (16 to 32\,ms); the in-game
 round trip, which waits for the game thread, goes from 6\,ms to
 6.7--8.6\,s. The network term the formula models is the one term that does
-not move.
+not move. The probes run from the same client container as the bots, at the
+same time; had the client been overloaded, its handshake and status timings
+would have grown too. They stay flat, so the delay is on the server, in its
+game thread, not in the load generator.
 
 \begin{figure}[t]
 \centering
@@ -426,7 +429,13 @@ players & analytical & queueing & learned \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}. The
+Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}.
+Table~\ref{tab:sim} shows why the error survives in the literature. Graded
+the way a simulator built on (\ref{eq:analytical}) grades it, by its own
+prediction, the load-blind placement is the best of the three at every size:
+5--15\,ms predicted against 14--33\,ms for the load-aware placements, which
+pay for the distance of the nodes they spread to. Deployed, it is the worst
+by orders of magnitude. The
 analytical model predicts 5--15\,ms for every scenario and fills the nearest
 node to its 100-player cap before using the next; from 80 players its worst
 players wait 18--30\,s, about 510 to 1500 times longer than under either
@@ -436,6 +445,25 @@ within 4\,ms of each other, and the learned model's predictions of its own
 deployments are within 12\,ms. On these scenarios the learned model's
 advantage is in prediction, not in the placement decision: a correctly fitted
 closed form reaches almost the same placement.
+
+\begin{table}[t]
+\centering
+\caption{Worst player's p95 (ms): what a simulator built on (1) reports for
+each placement, and what was measured when it was deployed}
+\label{tab:sim}
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{rrrrr}
+\toprule
+ & \multicolumn{2}{c}{load-blind placement} & \multicolumn{2}{c}{learned placement} \\
+players & simulated & measured & predicted & measured \\
+\midrule
+40  & 5.2  & 26        & 14.0 & 26 \\
+80  & 5.2  & 29\,897   & 20.9 & 20 \\
+120 & 15.2 & 17\,758   & 31.6 & 32 \\
+160 & 15.2 & 19\,990   & 33.2 & 39 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering

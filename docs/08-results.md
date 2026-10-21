@@ -261,6 +261,14 @@ deployment.
 
 What this shows:
 
+0. **In a simulator it would have won.** Graded by its own formula, the way
+   a simulator built on it grades it, the load-blind placement is the best of
+   the three at every size: predicted worst 5.2 / 5.2 / 15.2 / 15.2 ms at
+   40 / 80 / 120 / 160 players, against 14.0 / 20.9 / 31.6 / 33.2 ms for the
+   learned placement, which pays for the distance of the nodes it spreads to.
+   Deployed, the learned placement measured 26 / 20 / 32 / 39 ms and the
+   load-blind one 26 / 29 897 / 17 758 / 19 990 ms. This is the error a
+   simulator cannot show.
 1. **The load-blind placement fails catastrophically, and confidently.** It
    predicts 5-15 ms for every scenario and fills the nearest node to its
    100-player cap before using the next. From 80 players the worst-off players

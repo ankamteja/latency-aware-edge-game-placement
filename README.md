@@ -195,6 +195,11 @@ RTT, ms:
 | 120 | **17 758** | 31 | 32 |
 | 160 | **19 990** | 35 | 39 |
 
+**A simulator would have picked the wrong one.** Graded by its own formula,
+as a simulator built on it grades it, the load-blind placement looks best at
+every size (5-15 ms predicted, against 14-33 ms for the learned placement).
+Deployed, it is 510-1500x worse.
+
 The analytical model predicted 5-15 ms for every one of those and filled the
 nearest node to its 100-player cap before using the next. Both load-aware models keep edge1 at 40 players and spread
 the rest; their placements measure within a few ms of each other.
