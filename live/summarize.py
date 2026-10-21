@@ -32,6 +32,17 @@ def load(d):
     return meta, summ, tl
 
 
+def at_cut(tl, cut):
+    """When the quota change actually took effect (the scenario asks for it at
+    cut["t"]; applying it takes a few seconds) and how many players the cut
+    node held just before. A controller that had already emptied the node is
+    not tested on noticing the cut, only on staying away."""
+    node = cut["node"]
+    t = next((r["t"] for r in tl if r["nodes"][node].get("quota_cores") == cut["cores"]), cut["t"])
+    before = [r for r in tl if r["t"] < t]
+    return t, (before[-1]["nodes"][node]["players"] if before else None)
+
+
 def window(tl, lo, hi):
     w = [r["worst_p95_ms"] for r in tl if lo <= r["t"] < hi and r["worst_p95_ms"]]
     if not w:
@@ -60,8 +71,8 @@ def aggregate(runs):
         head = "| scenario | controller | runs | worst p95, median | time over 100 ms | moves |"
         sep = "|---|---|---|---|---|---|"
         if cut:
-            head += " after the cut: time over 100 ms |"
-            sep += "---|"
+            head += f" {cut['node']} players at the cut | after the cut: time over 100 ms |"
+            sep += "---|---|"
         out += [head, sep]
         for lab in sorted({label(m, n) for m, _, _, n in rows}):
             g = [r for r in rows if label(r[0], r[3]) == lab]
@@ -69,8 +80,10 @@ def aggregate(runs):
                     f"| {span([r[1]['time_over_budget_share'] for r in g], pct)} "
                     f"| {span([r[1]['migrations'] for r in g], lambda v: f'{v:g}')} |")
             if cut:
-                w = [window(r[2], cut["t"], 1e9) for r in g]
-                line += f" {span([x[1] for x in w if x], pct)} |"
+                cuts = [at_cut(r[2], cut) for r in g]
+                w = [window(r[2], t, 1e9) for (t, _), r in zip(cuts, g)]
+                held = ", ".join(str(p) for _, p in cuts)
+                line += f" {held} | {span([x[1] for x in w if x], pct)} |"
             out.append(line)
         out.append("")
     return out
@@ -95,8 +108,8 @@ def main():
         head = "| run | controller | worst p95, median | time over 100 ms | worst, max | moves | mean reconnect |"
         sep = "|---|---|---|---|---|---|---|"
         if cut:
-            head += f" after the cut ({cut['t']} s): median / over 100 ms / max |"
-            sep += "---|"
+            head += f" cut took effect | {cut['node']} players then | after the cut: median / over 100 ms / max |"
+            sep += "---|---|---|"
         lines += [head, sep]
         for meta, summ, tl, name in rows:
             gap = summ.get("migration_gap_mean_s")
@@ -104,7 +117,9 @@ def main():
                    f"| {summ['time_over_budget_share'] * 100:.0f}% | {fmt_ms(summ['worst_p95_max_ms'])} "
                    f"| {summ['migrations']} | {f'{gap:.1f} s' if gap else '-'} |")
             if cut:
-                w = window(tl, cut["t"], 1e9)
+                t, held = at_cut(tl, cut)
+                w = window(tl, t, 1e9)
+                row += f" {t:.0f} s | {held} |"
                 row += (f" {fmt_ms(w[0])} / {w[1] * 100:.0f}% / {fmt_ms(w[2])} |" if w else " - |")
             lines.append(row)
         lines.append("")
