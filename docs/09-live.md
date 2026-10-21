@@ -111,13 +111,37 @@ live/run.sh                     # dashboard on http://127.0.0.1:8090
 **Watch the twin react to load you add from a terminal.** Everything is
 driven from a shell; the dashboard only shows:
 
+**The guided demo** walks through all of it, one step per Enter, with the
+live table in between and a line on what to point at:
+
 ```bash
-live/load.sh start learned      # a manual session, the learned model in control
-live/load.sh add edge1 60       # 60 real bots straight onto the 0.5-core edge
-live/load.sh status             # what the twin shows, as a table
-live/load.sh remove 20          # take 20 bots off again
+live/demo.sh                    # our model, then the load-blind formula (~12 min)
+live/demo.sh ours               # only our model
+live/demo.sh formula            # only the formula
+```
+
+**Or step by step:**
+
+```bash
+live/load.sh start learned-live # a manual session; models: learned-live, learned,
+                                #   queueing, analytical
+live/load.sh join 40            # 40 players arrive, one match every 5 s; the model
+                                #   predicts every node and places each match
+live/load.sh add edge1 30       # a flash crowd forced onto edge1; the controller
+                                #   then moves matches off it
+live/load.sh throttle edge1 0.25  # edge1 loses half its CPU, no model is told
+live/load.sh restore edge1      # and gets it back
+live/load.sh status             # players, tick, p95, the controller's prediction
+live/load.sh remove 20          # take 20 players off
 live/load.sh stop               # end the session, disconnect every bot
 ```
+
+Tested on the testbed on 2026-10-21: with `learned-live`, `join 40` put four
+matches on edge1 (predicted 7 to 14 ms each) and, once edge1 was predicted
+past its knee, `join 30` went to edge2; `add edge1 30` was moved to edge3
+within 36 s; after `throttle edge1 0.25` a match moved off within 25 s. With
+`analytical`, `join 70` put all 70 players on edge1 ("predicted 5 ms") while
+it measured 12.8 s.
 
 The dashboard's *Raw telemetry* panel prints what the numbers are made of as
 it reads them: latency lines from named bots (`bot23 rtt 7 ms`) and each

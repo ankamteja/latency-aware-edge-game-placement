@@ -224,7 +224,8 @@ and every model's prediction as it happens. **Watch it without the testbed:**
 [a replay of the recorded runs](https://ankamteja.github.io/latency-aware-edge-game-placement/)
 plays the same dashboard back from the run logs (`python3 -m live.build_site`).
 Load is driven from a terminal
-(`live/load.sh add edge1 60`, `throttle edge1 0.25`, ...). To show it to
+(`live/load.sh join 40`, `add edge1 30`, `throttle edge1 0.25`, ...), and
+`live/demo.sh` runs the whole demonstration one step per Enter. To show it to
 someone, follow [the demo guide](docs/demo-guide/guide.pdf).
 
 | run, worst node's p95 | median | time over 100 ms | moves |
