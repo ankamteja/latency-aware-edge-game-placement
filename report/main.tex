@@ -315,11 +315,11 @@ replicates ICMP p95 stays within 0.3\,ms of the configured RTT. netem fixes
 the link delay, so this mainly shows that the hosts' network stacks added
 nothing under load: whatever grows, grows above the network. edge1 stays within 10\,ms of its 5\,ms
 RTT up to 40 players and reaches 6.7--8.6\,s at 60, where its tick time jumps
-from 6.5 to 46\,ms. edge2 is flat to 60 players (23\,ms); its knee is at 80
+from 6.6 to 46\,ms. edge2 is flat to 60 players (23\,ms); its knee is at 80
 players (one replicate already measured 2.7\,s there, the other two
 34--44\,ms) and every replicate breaks by 100. edge3 and cloud never reach a knee within 100 players. The tail
 leaves its flat region at edge1, 50 players, while mean tick time is still
-6.5\,ms, an eighth of the 50\,ms budget.
+6.6\,ms, an eighth of the 50\,ms budget.
 
 \begin{figure}[t]
 \centering
@@ -388,7 +388,8 @@ the cells with replacement 2000 times and recomputed every model's error on
 the same resample each time (a paired bootstrap). This puts the
 learned model's cross-replicate median error at 0.9\,ms [0.3, 1.5] against
 queueing's 1.8\,ms [1.6, 5.0], lower in every resample; on the 25 held-out
-cells it is lower in 95\%. On those 25 held-out cells, asked whether a cell
+cells it is lower in 95\%, but the interval of the difference,
+$-1.1$\,ms [$-9.6$, $+0.3$], includes zero, so there the gap is not significant. On those 25 held-out cells, asked whether a cell
 breaks a 50\,ms budget, the learned model scores F1 0.92 (all six violations caught), the queueing model 0.67 and
 the analytical model 0, since it never predicts a violation.
 
@@ -414,7 +415,9 @@ learned    & 0.9 ms & 1.28$\times$ & 469 ms \\
 \begin{table}[t]
 \centering
 \caption{Worst node's measured p95 (ms) for each model's placement
-(edge1/edge2/edge3/cloud players)}
+(edge1/edge2/edge3/cloud players assigned). The overloaded edge1 under the
+analytical placement held only 66, 63 and 71 of its 80, 100 and 100; the
+others timed out.}
 \label{tab:deploy}
 \setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{rlll}

@@ -256,6 +256,11 @@ does not show.
 
 ### Measured node capacity (warm worlds, 2026-08-11; day/night cycle was running)
 
+> **Historical.** Measured before time of day was frozen and before the host's
+> power mode was fixed, so tick times here are higher than in the current grids
+> (edge1 now: 6.6 ms at 50 players, 46 ms at 60; see
+> [docs/08-results.md](docs/08-results.md)). Kept for the capacity-per-core trend only.
+
 Players a node holds before its tick time breaks the 50 ms budget that the
 game's 20 Hz design imposes. This is the denominator that turns a raw player
 count into *utilization*, the unit `1/(1 − utilization)` is written in and the

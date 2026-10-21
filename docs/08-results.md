@@ -71,7 +71,7 @@ server-side, and the analytical model has no term for it.
 The shape, on every node that reaches it, is flat, then a cliff:
 
 - **edge1** stays within 10 ms of its network RTT up to 40 players. At 60 it
-  is 8.6 s. Tick time (MSPT): 4.2-5.0 ms at 40, 6.5 ms at 50, **46 ms at 60**.
+  is 8.6 s. Tick time (MSPT): 4.2-5.0 ms at 40, 6.5-6.7 ms at 50, **46 ms at 60**.
 - **edge2** is flat to 60 players (23 ms); its knee is at 80, and every
   replicate breaks by 100. At 80
   the replicates disagree by 80x (34 vs 2 661 ms) - that is the knee itself, the
@@ -80,7 +80,7 @@ The shape, on every node that reaches it, is flat, then a cliff:
   p95 rises 31 → 62 ms and 41 → 59 ms.
 
 **The tail breaks before the average tick time does.** At edge1, 50 players,
-MSPT is 6.5 ms - an eighth of the 50 ms budget - while p95 has already left the
+MSPT is 6.6 ms (mean of the two replicates) - an eighth of the 50 ms budget - while p95 has already left the
 flat region (47 and 308 ms). Mean tick time is not an early warning.
 
 Figures: `figures/fig1_p95_vs_players.png` (this table, with the analytical
@@ -256,8 +256,10 @@ Nobody's prediction is used to grade anybody: the clock decides.
 | 120 | **17 758** (edge1=100, edge2=20) | 31 (40/80/0/0) | 32 (40/70/10/0) |
 | 160 | **19 990** (edge1=100, edge2=60) | 35 (40/80/40/0) | 39 (40/70/50/0) |
 
-Placements are written edge1/edge2/edge3/cloud. Zero kicks in every
-deployment.
+Placements are written edge1/edge2/edge3/cloud and count players assigned.
+Zero kicks in every deployment, but the overloaded edge1 under the analytical
+placement held only 66, 63 and 71 of its 80, 100 and 100 players; the others
+timed out (keepalive) and are not in its p95.
 
 What this shows:
 
