@@ -19,6 +19,7 @@ cd "$(dirname "$0")"
 TAG="${1:?usage: ./grid.sh <tag> [reverse]}"
 ORDER="edge1 edge2 edge3 cloud"
 [ "${2:-}" = reverse ] && ORDER="cloud edge3 edge2 edge1"
+ORDER="${NODES:-$ORDER}"        # NODES="edge1 edge2" re-measures only those
 
 declare -A LOADS=(
   [edge1]=1,10,20,30,40,50,60

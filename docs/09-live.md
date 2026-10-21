@@ -183,7 +183,8 @@ runs with [lowest, highest].
 |---|---|---|---|---|---|---|---|
 | analytical (load-blind) | 1.1 s [76 ms, 4.5 s] | 29.8 s [19.6, 31.8] | 53% [46, 62] | 35.6% [33.6, 40.1] | 13.0 s [12.8, 14.6] | 0 | - |
 | queueing (M/M/1) | 99 ms [72, 166] | 3.8 s [3.5, 5.7] | 50% [46, 53] | 15.3% [11.3, 25.7] | 756 ms [434 ms, 1.8 s] | 11 | 6.3 s [6.2, 6.3] |
-| learned | **39 ms [33, 47]** | 3.6 s [0.8, 5.8] | **33% [18, 41]** | **7.9% [2.0, 10.3]** | **338 ms [35, 729]** | 10 | 6.1 s [5.9, 6.2] |
+| learned | 39 ms [33, 47] | 3.6 s [0.8, 5.8] | 33% [18, 41] | 7.9% [2.0, 10.3] | 338 ms [35, 729] | 10 | 6.1 s [5.9, 6.2] |
+| learned, corrected live | **33 ms [32, 34]** | **918 ms [898 ms, 1.3 s]** | **8% [5, 11]** | **0.8% [0.8, 1.0]** | **35 ms [33, 35]** | 15 [15, 16] | 6.0 s [6.0, 6.2] |
 
 ![worst p95 over time under each controller](../figures/fig6_live_ab.png)
 
@@ -213,6 +214,13 @@ Figure 6 shows each controller's median run.
   placements (26 ms against 14.5 ms in the grid). The learned model has no
   way to see that, and the queueing runs share the same edge1 problem on top
   of edge2's.
+- **The live-corrected model is the best of the four here.** It was run
+  on the same schedule afterwards (three runs, about 90 min after the
+  others, after grid4). It distrusts edge1 at 40 players (the same
+  login-window caution described under the CPU cut below), so it moves more
+  (15-16) and keeps edge1 lighter; its time over budget is a third of the
+  offline learned model's and its worst moment under 1.3 s. The caution
+  that confounds its capacity-drop runs is what helps it on this schedule.
 - **Not every metric separates them.** The worst single moment (max) is in
   the seconds for both load-aware controllers and their ranges overlap;
   the medians, time over budget and share of samples over budget do not.
@@ -279,8 +287,7 @@ change takes effect at 222-224 s; "after the cut" below starts there.
   `...150643068` the memory expired at 500 s, it moved a match back to the
   throttled edge1, and the rejoining players saw up to 4.5 s.
 - **Read with care.** The memory was designed after the first run, the
-  login-window effect was found afterwards, and the live correction has not
-  yet been run on the standard schedule. This shows the mechanism, not a
+  login-window effect was found afterwards. This shows the mechanism, not a
   tuned or validated result. Ignoring windows in which players are still
   joining is the obvious next change.
 

@@ -36,8 +36,9 @@ best (median error 0.9\,ms against 1.8\,ms and 5.8\,ms, and 1.2\,ms on a
 held-out third replicate) but, on these scenarios, does not place better than
 the fitted closed form. Run as a live controller on the same schedule of
 players (three runs each), the load-blind model never moves a match and its
-worst players sit at a median of 1.1\,s, queueing's at 99\,ms and the learned
-model's at 39\,ms. When one node silently loses half its CPU, the offline
+worst players sit at a median of 1.1\,s, queueing's at 99\,ms, the learned
+model's at 39\,ms and the learned model corrected from live measurements at
+33\,ms. When one node silently loses half its CPU, the offline
 models keep their players on it; only a variant that corrects itself from
 live measurements moves them, though in two of its three runs it had already
 left that node before the cut.
@@ -502,7 +503,12 @@ controller's time over 100\,ms is edge1 holding 40 players, its knee: the
 grid measured 14.5\,ms there, but live, with every node loaded, edge1 at 40
 was often backlogged, as in the deployed placements (26\,ms). Each move costs
 its ten players a reconnect: about 6\,s from the stop until the last of them
-sends a sample from the new node (5.9--6.3\,s, mean per run).
+sends a sample from the new node (5.9--6.3\,s, mean per run). The
+learned model corrected live (below) was run on the same schedule
+afterwards, three times: it distrusts edge1 at 40 players, moves more
+(15--16 moves) and keeps the worst players at 33\,ms [32, 34], over 100\,ms
+8\% [5, 11] of the time, with only 0.8--1.0\% of all samples over budget.
+The caution that confounds its capacity-drop runs is what helps it here.
 
 Every model is also scored in the background on each run. A \emph{window} is
 10\,s of unchanged load on one node, so a run yields one window per busy
@@ -535,7 +541,8 @@ learned    & 0.00 & 0.00 & 0.00 & 0.35 [0.25, 0.52] \\
 \begin{table}[t]
 \centering
 \caption{Live controller, same 13-minute schedule, worst node's p95. Median
-[min, max] over three runs each.}
+[min, max] over three runs each. live-corr.: the learned model corrected
+from live measurements (Section~IV-E, second part).}
 \label{tab:live}
 \setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{lrrr}
@@ -545,6 +552,7 @@ controller & median & over 100\,ms & moves \\
 analytical & 1.1\,s [76\,ms, 4.5\,s] & 53\% [46, 62] & 0 \\
 queueing   & 99\,ms [72, 166]        & 50\% [46, 53] & 11 \\
 learned    & 39\,ms [33, 47]         & 33\% [18, 41] & 10 \\
+live-corr. & 33\,ms [32, 34]         & 8\% [5, 11]   & 15 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -681,9 +689,9 @@ problems are where the load-aware models could differ.
 
 \emph{Live runs.} Three runs per controller on one schedule; the ranges are
 wide (the load-blind controller's median spans 76\,ms to 4.5\,s), so they
-show direction, not effect sizes. The live correction was not run on the
-standard schedule, and its capacity-drop runs are confounded by its own
-earlier moves. A move is a reconnect, not a state handover.
+show direction, not effect sizes. The live-corrected runs on the standard
+schedule were made last, about 90\,min after the others, and its
+capacity-drop runs are confounded by its own earlier moves. A move is a reconnect, not a state handover.
 
 \textbf{Future work.} A live correction that ignores windows in which
 players are still joining; more replicates on dedicated
