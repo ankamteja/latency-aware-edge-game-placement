@@ -147,6 +147,8 @@ every command explained in [docs/03-commands.md](docs/03-commands.md).
 ## Results
 
 Full analysis, numbers and limits: [docs/08-results.md](docs/08-results.md).
+The paper, as a PDF: [report/main.pdf](report/main.pdf) (also attached to the
+[release](https://github.com/ankamteja/latency-aware-edge-game-placement/releases/tag/report-2026-10-21)).
 Four nodes (0.5 / 1 / 2 / 4 cores at 5 / 15 / 30 / 40 ms), two replicates of
 the load grid to fit on and a third held out to test on, then each latency
 model's optimal placement deployed for real.
