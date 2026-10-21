@@ -175,6 +175,9 @@ class Run:
 
     # ---- actions ------------------------------------------------------------
     def arrive(self, mid):
+        if mid in self.matches:
+            self.note("reject", f"match {mid} is already running")
+            return
         load = self.load()
         if self.arrival == "nearest":
             node = next((n for n in self.policy.order if load[n] + SIZE <= CAPACITY), None)
@@ -201,7 +204,11 @@ class Run:
         whatever the policy would choose - the way a flash crowd or a
         careless matchmaker lands load. The controller then reacts."""
         load, placed = self.load(), 0
-        free = [i for i in range(MAX_MATCHES) if i not in self.matches]
+        # never an id the schedule starts later: two processes would share
+        # one tag, one CSV and ten usernames
+        scheduled = {mid for t, kind, mid in self.events
+                     if kind == "arrive" and t >= self.elapsed()}
+        free = [i for i in range(MAX_MATCHES) if i not in self.matches and i not in scheduled]
         for mid in free[:count]:
             if load[node] + SIZE > CAPACITY:
                 break
@@ -240,10 +247,15 @@ class Run:
 
     def restore_capacity(self):
         for n in self.capacity_changed:
-            try:
-                tb.set_cpu(n, self.nodes[n]["cores"])
-            except Exception:
-                pass
+            for attempt in range(2):
+                try:
+                    tb.set_cpu(n, self.nodes[n]["cores"])
+                    break
+                except Exception as e:
+                    err = e
+            else:
+                self.note("reject", f"{n} CPU NOT restored ({err}): the next run "
+                          "restores it at start, or run topology/verify.sh")
         self.capacity_changed.clear()
 
     def apply_commands(self):
@@ -265,7 +277,9 @@ class Run:
     def depart(self, mid):
         m = self.matches.pop(mid, None)
         if m:
-            tb.stop_match(mid)
+            if not tb.stop_match(mid):
+                self.note("reject", f"match {mid}: could not confirm its bots stopped")
+            self.drain(m)                   # its last samples, and the last returns
             m.close_gap(time.time())
             self._closed_gaps += m.gaps
             self.load_since[m.node] = time.time()
@@ -273,14 +287,24 @@ class Run:
 
     def migrate(self, d):
         m = self.matches[d["match"]]
-        tb.stop_match(m.mid)
+        stopped = tb.stop_match(m.mid)
         self.drain(m)                       # the source's last samples still count
         m.close_gap(time.time())
+        if not stopped:
+            # the old bots may still be connected: starting the same usernames
+            # on dst would overlap them, so the match stays where it is
+            m.since = time.time()
+            self.note("reject", f"match {m.mid} not moved: could not confirm its bots "
+                      f"stopped on {d['src']}")
+            return
         try:
             path = tb.start_match(self.id, m.mid, d["dst"], m.seg + 1)
         except Exception as e:
             self.matches.pop(m.mid)
-            self.note("reject", f"match {m.mid} could not move to {d['dst']}: {e}")
+            self._closed_gaps += m.gaps
+            self.load_since[d["src"]] = time.time()
+            self.note("depart", f"match {m.mid} lost: could not restart on {d['dst']}: {e}",
+                      node=d["src"])
             return
         m.seg += 1
         m.node = d["dst"]
@@ -310,9 +334,11 @@ class Run:
         now_ms = time.time() * 1000
         for m in self.matches.values():
             self.drain(m)
-        for q in self.samples.values():
-            while q and q[0][0] < now_ms - WINDOW_S * 1000:
-                q.popleft()
+        cutoff = now_ms - WINDOW_S * 1000
+        for n, q in self.samples.items():
+            # batches from different matches interleave in time, so filter
+            # every sample, not just the head
+            self.samples[n] = deque(x for x in q if x[0] >= cutoff)
 
     def read_servers(self):
         with ThreadPoolExecutor(len(self.nodes)) as ex:
@@ -428,11 +454,19 @@ class Run:
                       source="startup")
         # same gate as every grid cell: nothing from a previous run attached
         self.status = "waiting for empty servers"
+        counts = []
         for _ in range(45):
+            if self.stop_flag.is_set():
+                break
             counts = [tb.server_sample(n, self.cpu)["players"] for n in self.nodes]
             if all(c == 0 for c in counts):
                 break
             time.sleep(2)
+        else:
+            # started anyway, but the log and summary say on what
+            dirty = {n: c for n, c in zip(self.nodes, counts) if c != 0}
+            self.note("reject", "servers not empty or unreadable after 90 s, started anyway: "
+                      + ", ".join(f"{n}={c}" for n, c in dirty.items()))
         self.t0 = time.time()
         self.status = "running"
         pending = list(self.events)

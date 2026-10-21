@@ -70,12 +70,30 @@ def start_match(run, mid, node, seg):
 def stop_match(mid, wait_s=3.0):
     """Stop one match and wait until its process is gone, so a replacement
     never overlaps it: until the old bots disconnect they still load the
-    source server. The trailing space keeps live-m01 from matching live-m010."""
+    source server. The trailing space keeps live-m01 from matching live-m010.
+    Returns whether the process is confirmed gone."""
     pat = f"bot[.]js.*--tag={match_tag(mid)} "
     sh(["docker", "exec", CLIENT, "pkill", "-f", pat])
     end = time.time() + wait_s
-    while time.time() < end and sh(["docker", "exec", CLIENT, "pgrep", "-f", pat]).strip():
+    while time.time() < end:
+        if gone(pat):
+            return True
         time.sleep(0.2)
+    # still there, or docker would not say: force it and check once more
+    sh(["docker", "exec", CLIENT, "pkill", "-9", "-f", pat])
+    time.sleep(0.3)
+    return gone(pat)
+
+
+def gone(pat):
+    """True only when pgrep ran and found nothing (exit 1, no error text).
+    A failed or hung docker exec is "unknown", never "gone"."""
+    try:
+        r = subprocess.run(["docker", "exec", CLIENT, "pgrep", "-f", pat],
+                           capture_output=True, text=True, timeout=4)
+    except (subprocess.SubprocessError, OSError):
+        return False
+    return r.returncode == 1 and not r.stdout.strip() and not r.stderr.strip()
 
 
 def stop_all():
