@@ -30,9 +30,19 @@ from placement.models import MODELS, PLAYERS_PER_CORE, load_nodes, load_rows
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "results" / "model"
 GRID_RUNS = ("grid1", "grid2")
-# A replicate collected after the models were fixed, never used for fitting:
-# the closest thing to fresh data this testbed can produce.
-HELD_OUT_RUN = "grid3"
+# Replicates collected after the models were fixed, never used for fitting:
+# the closest thing to fresh data this testbed can produce. Whichever of them
+# exist are pooled into one test set.
+HELD_OUT_RUNS = ("grid3", "grid4")
+
+
+def held_out_runs():
+    present = {r["run"] for r in load_rows(REPO / "data" / "cells.csv")}
+    return [r for r in HELD_OUT_RUNS if r in present]
+
+
+def held_out_label():
+    return "grid1+grid2->" + "+".join(held_out_runs())
 
 
 def cells(runs):
@@ -87,7 +97,8 @@ def cross_replicate(nodes):
 
 def held_out(nodes):
     """Fit on both grid replicates, predict the held-out replicate."""
-    test = cells([HELD_OUT_RUN])
+    runs = held_out_runs()
+    test = cells(runs) if runs else []
     if not test:
         return None, []
     res, detail = {}, []
@@ -95,7 +106,7 @@ def held_out(nodes):
     for name in MODELS:
         e = errors(fit(name, rows), test, nodes)
         for x in e:
-            x.update(model=name, split=f"grid1+grid2->{HELD_OUT_RUN}")
+            x.update(model=name, split=held_out_label())
         res[name] = summary(e)
         detail += e
     return res, detail
@@ -172,7 +183,7 @@ def main():
     for name, s in cr.items():
         lines.append(f"| {name} | {s['n']} | {s['mae_ms']} | {s['median_abs_err_ms']} | {s['typical_factor']}x |")
     if ho:
-        lines += ["", f"## Held-out replicate (fit on grid1+grid2, predict {HELD_OUT_RUN})", "",
+        lines += ["", f"## Held-out replicate (fit on grid1+grid2, predict {'+'.join(held_out_runs())})", "",
                   "| model | cells | MAE (ms) | median abs err (ms) | typical factor off |",
                   "|---|---|---|---|---|"]
         for name, s in ho.items():

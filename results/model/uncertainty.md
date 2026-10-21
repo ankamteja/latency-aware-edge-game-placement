@@ -17,7 +17,7 @@ and why the intervals are optimistic.
 | learned - analytical | -5.0 [-7.6, -2.3] | 100% of resamples |
 | queueing - analytical | -4.0 [-6.0, -1.2] | 100% of resamples |
 
-## Held-out replicate (grid3) (25 cells, 2000 paired resamples)
+## Held-out replicates (grid3) (25 cells, 2000 paired resamples)
 
 | model | median abs error, ms [95% CI] | F1, p95 > 50 ms [95% CI] | F1, p95 > 100 ms [95% CI] |
 |---|---|---|---|

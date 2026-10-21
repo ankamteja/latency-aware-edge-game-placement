@@ -18,7 +18,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from model.evaluate import OUT
+from model.evaluate import OUT, held_out_runs
 
 B = 2000
 SEED = 7
@@ -94,7 +94,7 @@ def main():
              "and why the intervals are optimistic.", ""]
     lines += section("Cross-replicate", OUT / "cross_replicate.csv")
     if (OUT / "held_out.csv").exists():
-        lines += section("Held-out replicate (grid3)", OUT / "held_out.csv")
+        lines += section(f"Held-out replicates ({'+'.join(held_out_runs())})", OUT / "held_out.csv")
     (OUT / "uncertainty.md").write_text("\n".join(lines))
     print("\n".join(lines))
 

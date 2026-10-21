@@ -32,7 +32,7 @@ from sklearn.metrics import (accuracy_score, balanced_accuracy_score,
                              confusion_matrix, f1_score, precision_score,
                              r2_score, recall_score)
 
-from model.evaluate import OUT, cross_replicate, held_out, ranking
+from model.evaluate import OUT, cross_replicate, held_out, held_out_runs, ranking
 from placement.models import MODELS, load_nodes
 
 THRESHOLDS_MS = (50, 100)
@@ -120,7 +120,8 @@ def main():
     section("Cross-replicate (fit one grid replicate, predict the other)", by_model(cr), lines, flat)
     _, ho = held_out(nodes)
     if ho:
-        section("Held-out replicate (fit on grid1+grid2, predict grid3)", by_model(ho), lines, flat)
+        section(f"Held-out replicate (fit on grid1+grid2, predict {'+'.join(held_out_runs())})",
+                by_model(ho), lines, flat)
     rs = ranking_scores(ranking(nodes))
     lines += ["## Ranking: does the model pick the measured-best node for one match?", "",
               "| model | load levels | top-1 accuracy | mean regret ms |", "|---|---|---|---|"]
