@@ -306,7 +306,8 @@ for every node against what the formula predicts, each model's placement
 deployed for real at 40 to 160 players, and every model's out-of-sample
 score. The headline: with each model's placement deployed, the worst player's
 p95 was 26 / 29\,897 / 17\,758 / 19\,990 ms for the formula at 40 / 80 / 120 /
-160 players, and 20 to 39 ms for both load-aware models. \ui{How it works}
+160 players in the first round (16 / 28\,244 / 18\,658 / 28\,251 ms in the
+second), and 16 to 55 ms for both load-aware models. \ui{How it works}
 is the pipeline on one page: grid, dataset, models, and the live loop.
 
 \section{Questions you will get, and honest answers}
@@ -318,8 +319,9 @@ is the pipeline on one page: grid, dataset, models, and the live loop.
   the samples and the servers' own console replies.
 \item[Does the learned model place better than queueing theory?] Not on the
   four offline scenarios: a correctly fitted M/M/1 model placed as well. The
-  learned model predicts latency best (median error 0.9 ms, 1.2 ms on a
-  held-out third replicate, against 1.8 and 2.3 ms). The claim is that the
+  learned model predicts latency best (median error 0.9 ms, 1.1 ms on two
+  held-out replicates, against 1.8 and 2.2 ms; on the held-out data the gap
+  to queueing is within noise). The claim is that the
   load-blind formula fails, by orders of magnitude, and that any load-aware
   model avoids it.
 \item[Why is a migration a disconnect?] The controller stops the match on one

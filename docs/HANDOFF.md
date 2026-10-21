@@ -7,9 +7,9 @@ this up without re-deriving anything.
 cloud: 0.5/1/2/4 cores at 5/15/30/40 ms) is built and verified. Two replicates
 of the load grid (`grid1`, `grid2`), the labelled dataset (`data/`), three
 latency models (analytical, M/M/1, gradient-boosted trees), and each model's
-optimal placement deployed for real (`place1`) are done. Headline: the
+optimal placement deployed for real (`place1`, `place2`) are done. Headline: the
 load-blind placement's worst players wait 18-30 s from 80 players on; both
-load-aware placements stay at 20-39 ms. The analysis and its limits are in
+load-aware placements stay at 16-55 ms (two deployment rounds). The analysis and its limits are in
 [08-results.md](08-results.md) - read that, not §3 below, for numbers.
 §2-§3 below describe the earlier two-node phase and are kept as history.
 
