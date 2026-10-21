@@ -16,7 +16,9 @@ Read the limits in §8.6 before quoting anything.
 | `grid1` | every node swept on its own load ladder, edge1 → cloud | 25 | 2026-10-20 23:43 – 2026-10-21 00:48, edge1 re-run 02:30 – 02:47 |
 | `grid2` | the same ladder, nodes in reverse order | 25 | 2026-10-21 00:48 – 01:54 |
 | `grid3` | a third replicate, edge1 → cloud, held out from every fit | 25 | 2026-10-21 09:16 – 10:22 |
+| `grid4` | a fourth replicate, edge1 → cloud, held out from every fit | 25 | 2026-10-21 17:54 – 19:00; edge1 and edge2 re-measured 20:11 – 20:45 |
 | `place1` | each model's optimal placement deployed for real, all nodes loaded at once | 14 placements, 31 node-cells | 2026-10-21 01:54 – 02:28, 02:47 – 02:53 |
+| `place2` | the 9 distinct optimal placements deployed again, a second round | 9 placements, 19 node-cells | 2026-10-21 19:00 – 19:27 |
 
 Ladders: edge1 at 1, 10, 20, 30, 40, 50, 60 players; edge2, edge3 and cloud at
 1, 20, 40, 60, 80, 100. Each cell: 20 s settle, 15 s idle baseline (probes
@@ -38,12 +40,16 @@ Discarded, and kept only as evidence of the artefact that spoiled them:
 | `grid1-daynight`, `grid2-daynight` | measured with the day/night cycle running: hostile mobs at night (§6.18) |
 | `grid1-edge1-contended` | edge1 measured with the laptop's power mode on Balanced (it was switched to Performance 13 minutes into the run) and the host in interactive use: 2.4x the CPU per player of every other edge1 measurement (§8.6) |
 | `grid3-balanced` | a full third replicate measured after the power mode fell back to Balanced: 2-3x the CPU per player on every node, edge1 collapsing at 20 players instead of 50-60 (§8.6) |
+| `grid4-contended` | grid4's first edge1 and edge2 cells, measured while the host was in use (a browser and analysis scripts): edge1 1.3-1.6x and edge2 1.2-1.3x the CPU per player of grids 1-3; both nodes re-measured on an idle host |
 | `probe-balanced`, `probe-performance` | the same edge1 20-player cell, minutes apart, in each power mode: 42.4% vs 17.8% CPU (§8.6) |
 | `grid-a` | one bot process for all bots: the client's event loop was measured (§6.16) |
 
-The dataset (`data/dataset.csv`, `data/cells.csv`) is built from `grid1`,
-`grid2`, `grid3` and `place1` only: 106 cells, 318 rows of 30 s windows. Every
-model is fitted on `grid1` and `grid2`; `grid3` is used only as a test set.
+The dataset (`data/dataset.csv`, `data/cells.csv`) is built from `grid1`-`grid4`,
+`place1` and `place2` only: 150 cells, 450 rows of 30 s windows. Every
+model is fitted on `grid1` and `grid2`; `grid3` and `grid4` are used only as
+a test set. In `grid4` edge1 still costs about 10-15% more CPU per player at
+30-50 players than in grids 1-3 (20 players: 16%, inside the 14-18% of a clean
+run), the drift between replicates of one host.
 
 ---
 
@@ -155,23 +161,24 @@ model has never seen (median abs error / typical factor off):
 The learned model transfers to an unseen node size best on three of four
 nodes; on edge2 the closed form transfers better.
 
-**Held-out replicate** - fit on `grid1` and `grid2`, predict `grid3`, a third
-replicate measured hours later on a restarted testbed and never used in any
-fit (25 cells; `results/model/held_out.csv`):
+**Held-out replicates** - fit on `grid1` and `grid2`, predict `grid3` and
+`grid4`, replicates measured hours later on a restarted testbed and never
+used in any fit (50 cells; `results/model/held_out.csv`):
 
 | model | median abs error | typical factor off | MAE | R² (log10) | Spearman ρ | F1, p95 > 50 ms | F1, p95 > 100 ms |
 |---|---|---|---|---|---|---|---|
-| analytical | 6.9 ms | 2.92x | 1 325 ms | -0.50 | 0.45 | 0.00 | 0.00 |
-| queueing | 2.3 ms | 1.60x | 5 887 ms | 0.64 | 0.95 | 0.67 | **1.00** |
-| learned | **1.2 ms** | **1.20x** | **723 ms** | **0.94** | **0.98** | **0.92** | 0.80 |
+| analytical | 6.9 ms | 2.94x | 1 377 ms | -0.52 | 0.47 | 0.00 | 0.00 |
+| queueing | 2.2 ms | 1.57x | 5 835 ms | 0.70 | 0.94 | 0.60 | **1.00** |
+| learned | **1.1 ms** | 1.29x | **968 ms** | **0.89** | 0.94 | **0.86** | 0.80 |
 
 The same pattern as cross-replicate, on data no model has seen: the learned
-model is the most accurate everywhere and catches all six cells that break
-50 ms (one false alarm); the queueing model catches only half of them but
-gets the three 100 ms violations exactly. With 6 and 3 positive cells these
-F1 scores move by 0.1-0.3 per cell. `grid3` also reproduces the knees: edge1
-between 40 (15 ms) and 50 players (409 ms), edge2 between 80 (44 ms) and 100
-(25.8 s), edge3 and cloud none up to 100.
+model is the most accurate and catches 12 of the 14 cells that break
+50 ms (two false alarms); the queueing model catches 6 of them (no false
+alarm) but gets all six 100 ms violations exactly. With 14 and 6 positive
+cells these F1 scores move by about 0.05-0.15 per cell. Both held-out
+replicates reproduce the knees: edge1 between 40 (15-16 ms) and 50 players
+(409 ms and 1.8 s), edge2 between 80 (34-44 ms) and 100 (3.3-25.8 s), edge3
+and cloud none up to 100.
 
 **How sure are these?** `python -m model.uncertainty` resamples the test
 cells with replacement 2000 times and scores every model on the same
@@ -181,10 +188,11 @@ interval:
 | test | analytical | queueing | learned | learned better than queueing in |
 |---|---|---|---|---|
 | cross-replicate, 50 cells | 5.8 [2.9, 8.9] ms | 1.8 [1.6, 5.0] ms | **0.9 [0.3, 1.5] ms** | 100% of resamples, difference -0.9 [-3.7, -0.6] ms |
-| held-out grid3, 25 cells | 6.9 [2.6, 15.7] ms | 2.3 [1.3, 12.5] ms | **1.2 [0.8, 3.7] ms** | 95%, difference -1.1 [-9.6, +0.3] ms |
+| held-out grid3 + grid4, 50 cells | 6.9 [3.2, 11.7] ms | 2.2 [1.5, 6.5] ms | **1.1 [0.8, 2.8] ms** | 96%, difference -1.1 [-4.2, +0.1] ms |
 
 The learned model's lead in accuracy holds across resamples; on the smaller
-held-out set its interval against queueing just touches zero. The F1
+held-out set its interval against queueing still just includes zero, so
+there the gap is not significant. The F1
 intervals are wide (cross-replicate F1 at 50 ms: learned 0.83 [0.62, 0.97],
 queueing 0.56 [0.20, 0.80]) because only 3-12 cells break a budget, which is
 why the F1 comparisons below are called indicative. Cells on one node's
@@ -247,19 +255,23 @@ was computed (`placement/experiment.py plan`), then **deployed for real** with
 all loaded nodes running concurrently (`controller/deploy.sh`), and measured.
 Nobody's prediction is used to grade anybody: the clock decides.
 
-`results/placement/deployments.csv`, worst node's measured p95 in ms:
+Every placement was deployed twice, in two rounds hours apart (`place1`,
+`place2`). `results/placement/deployments.csv`, worst node's measured p95 in
+ms, round 1 / round 2:
 
 | players | analytical | queueing | learned |
 |---|---|---|---|
-| 40 | 26 (edge1=40) | 26 (edge1=40) | 26 (edge1=40) |
-| 80 | **29 897** (edge1=80) | 20 (40/40/0/0) | 20 (40/40/0/0) |
-| 120 | **17 758** (edge1=100, edge2=20) | 31 (40/80/0/0) | 32 (40/70/10/0) |
-| 160 | **19 990** (edge1=100, edge2=60) | 35 (40/80/40/0) | 39 (40/70/50/0) |
+| 40 | 26 / 16 (edge1=40) | 26 / 16 (edge1=40) | 26 / 16 (edge1=40) |
+| 80 | **29 897 / 28 244** (edge1=80) | 20 / 20 (40/40/0/0) | 20 / 20 (40/40/0/0) |
+| 120 | **17 758 / 18 658** (edge1=100, edge2=20) | 31 / 37 (40/80/0/0) | 32 / 32 (40/70/10/0) |
+| 160 | **19 990 / 28 251** (edge1=100, edge2=60) | 35 / 40 (40/80/40/0) | 39 / 55 (40/70/50/0) |
 
 Placements are written edge1/edge2/edge3/cloud and count players assigned.
 Zero kicks in every deployment, but the overloaded edge1 under the analytical
-placement held only 66, 63 and 71 of its 80, 100 and 100 players; the others
-timed out (keepalive) and are not in its p95.
+placement held only 66, 63 and 71 (round 1) and 52, 52 and 43 (round 2) of
+its 80, 100 and 100 players; the others timed out (keepalive) and are not in
+its p95. In round 2 edge1 cost about 15% more CPU at 40 players than in round
+1 (32-45% against 28-38%), the same drift as in `grid4`.
 
 What this shows:
 
@@ -269,19 +281,24 @@ What this shows:
    40 / 80 / 120 / 160 players, against 14.0 / 20.9 / 31.6 / 33.2 ms for the
    learned placement, which pays for the distance of the nodes it spreads to.
    Deployed, the learned placement measured 26 / 20 / 32 / 39 ms and the
-   load-blind one 26 / 29 897 / 17 758 / 19 990 ms. This is the error a
+   load-blind one 26 / 29 897 / 17 758 / 19 990 ms in round 1, and
+   16 / 20 / 32 / 55 against 16 / 28 244 / 18 658 / 28 251 ms in round 2. This is the error a
    simulator cannot show.
 1. **The load-blind placement fails catastrophically, and confidently.** It
    predicts 5-15 ms for every scenario and fills the nearest node to its
    100-player cap before using the next. From 80 players the worst-off players
-   wait 18-30 seconds - about 510-1500x worse
+   wait 18-30 seconds in both rounds - about 500-1500x worse
    than either load-aware placement, on the same hardware, the same links and
    the same players.
 2. **Both load-aware models fix it, and by about the same amount.** Their
    placements are nearly identical (both keep edge1 at 40) and measure within
-   1-4 ms of each other. The learned model predicted its own deployments to
-   within 12 ms (14.0 → 26, 20.9 → 20, 31.6 → 32, 33.2 → 39); the
-   analytical model predicted 5-15 ms for deployments that measured 18-30 s.
+   15 ms of each other with neither consistently ahead: queueing is 5 ms worse
+   at 120 in round 2, learned 4 and 15 ms worse at 160. The largest gap,
+   learned 55 ms at 160 players in round 2, is edge1 at 40 players, just
+   below its knee, again. The learned model predicted its own deployments to
+   within 22 ms (14.0 → 26 / 16, 20.9 → 20 / 20, 31.6 → 32 / 32, 33.2 → 39 /
+   55); the analytical model predicted 5-15 ms for deployments that measured
+   18-30 s.
 3. **The learned model's advantage is in prediction, not in this decision.**
    It is the better predictor (§8.4), but for this testbed's ranking question a
    correctly fitted closed form reaches the same placement. A claim that the
@@ -300,9 +317,9 @@ learned model's answer on clean data, so they are not in the table above.
 
 ## 8.6 Limits - quote these with the results
 
-- **One host, three replicates.** Every node is a container on one laptop.
+- **One host, four replicates.** Every node is a container on one laptop.
   The bootstrap intervals (8.4) cover the variation between cells, not between
-  whole replicates, of which there are three. At the knees (edge1 at
+  whole replicates, of which there are four. At the knees (edge1 at
   50, edge2 at 80) the replicates disagree by 6-80x, so the exact player count
   of a knee is not established; that a knee exists, and roughly where, is.
 - **The host's power mode sets the servers' capacity.** A node capped at
@@ -343,13 +360,13 @@ learned model's answer on clean data, so they are not in the table above.
 cd topology && ./up.sh                      # ends with ALL CHECKS PASSED
 cd ../controller
 ./grid.sh grid1 && ./grid.sh grid2 reverse  # ~2 h, keep the host idle
-./grid.sh grid3                             # held-out replicate, ~1 h
+./grid.sh grid3 && ./grid.sh grid4         # held-out replicates, ~1 h each
 cd ..
 python3 dataset/build_dataset.py --tags grid1,grid2
 python3 -m placement.experiment plan --players 40,80,120,160
 controller/deploy_plan.sh place1            # ~40 min
-python3 dataset/build_dataset.py --tags grid1,grid2,grid3,place1
-python3 -m placement.experiment score --tag place1
+(cd controller && ./deploy_plan.sh place2 2)  # second round, ~30 min
+./rebuild.sh                                # dataset, scores, figures, PDFs
 python3 -m model.evaluate                   # results/model/
 python3 -m model.metrics                    # results/model/metrics.md
 python3 -m model.uncertainty                # results/model/uncertainty.md
