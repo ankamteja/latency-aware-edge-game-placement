@@ -190,7 +190,10 @@ The same models drive a real-time controller on the testbed (`live/`,
 [docs/09-live.md](docs/09-live.md)): every 2 s it reads every bot's latency
 and every server's counters, every 10 s it may move one match of ten players,
 and a dashboard on `http://127.0.0.1:8090` shows the twin, the raw telemetry
-and every model's prediction as it happens. Load is driven from a terminal
+and every model's prediction as it happens. **Watch it without the testbed:**
+[a replay of the recorded runs](https://ankamteja.github.io/latency-aware-edge-game-placement/)
+plays the same dashboard back from the run logs (`python3 -m live.build_site`).
+Load is driven from a terminal
 (`live/load.sh add edge1 60`, `throttle edge1 0.25`, ...). To show it to
 someone, follow [the demo guide](docs/demo-guide/guide.pdf).
 
