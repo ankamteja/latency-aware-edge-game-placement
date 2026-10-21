@@ -420,7 +420,9 @@ function renderTwin(s){
     let sq="";(d.matches||[]).slice(0,10).forEach((mid,i)=>{
       sq+=`<rect x="${TW.x+14+i*15}" y="${y+TW.h-18}" width="11" height="11" rx="2" fill="${col}"><title>match ${mid}</title></rect>`});
     const quota=d.quota_cores!=null&&Math.abs(d.quota_cores-d.cores)>0.01?d.quota_cores:null;
-    const spec=`${quota!=null?quota.toFixed(2)+" of ":""}${d.cores} core${d.cores==1?"":"s"}`;
+    const spec=`${d.cores} core${d.cores==1?"":"s"}`;
+    // a CPU cut gets its own line under the match squares, where it has room
+    const cut=quota==null?"":`<text class="tw-spec" x="${TW.x+150}" y="${y+TW.h-8}" style="fill:${css('--red')}">CPU cut to ${quota.toFixed(2)} of ${d.cores}</text>`;
     let body="";
     if(d.players){
       const pv=(label,v,c,yy)=>v==null?"":`<text class="tw-k" x="${TW.x+292}" y="${y+yy}">${label}</text><text class="tw-v" x="${TW.x+292}" y="${y+yy+14}" fill="${c}">${fmtMs(v)}</text>`;
@@ -433,7 +435,7 @@ function renderTwin(s){
       ${sq}`;
     }
     panels+=`<g><rect class="tw-panel ${d.players?st:""}" x="${TW.x}" y="${y}" width="${TW.w}" height="${TW.h}" rx="3"/>
-      <text class="tw-name" x="${TW.x+14}" y="${y+22}">${n}</text><text class="tw-spec" x="${TW.x+70}" y="${y+22}" ${quota!=null?`fill="${css('--red')}"`:""}>${spec}</text>
+      <text class="tw-name" x="${TW.x+14}" y="${y+22}">${n}</text><text class="tw-spec" x="${TW.x+70}" y="${y+22}">${spec}</text>${cut}
       ${body}</g>`});
   $("tw-links").innerHTML=links; $("tw-nodes").innerHTML=panels;
   const total=NODES.reduce((a,n)=>a+nodes[n].players,0), nm=NODES.reduce((a,n)=>a+(nodes[n].matches||[]).length,0);
