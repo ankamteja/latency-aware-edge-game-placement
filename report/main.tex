@@ -94,7 +94,7 @@ is the load at which its p95 leaves the flat region and climbs steeply.
 budget at this load?'': 1 means every violation is caught with no false
 alarms, 0 means none is caught.
 
-\section{Related Work}
+\subsection{Background and related work}
 
 \textbf{Service placement in fog and edge.} Surveys of the service placement
 problem~\cite{aitsalaht2019overview} and of microservice
@@ -148,9 +148,16 @@ $s/(1-u)$ for utilization $u$ are the standard way to add load to a latency
 model. We include a fitted M/M/1 model as the strongest closed-form baseline
 rather than compare only against (\ref{eq:analytical}).
 
-\section{Testbed and Method}
+\section{Methodology}
 
-\subsection{Topology}
+The question is how far the load-blind model's prediction is from what
+players experience on a loaded edge node, and whether a model learned from
+measurements predicts and places better. We answer it by measuring a real
+game server under controlled load at four nodes, fitting three latency
+models to the measurements, and grading each model twice: by deploying the
+placements it chooses, and by letting it drive a live controller.
+
+\subsection{Testbed design}
 Five containers on one host are wired by containerlab: a client node and four
 candidate servers. Linux \texttt{netem} adds the network delay, split evenly
 between the two ends of each link, and each server's CPU is limited by a
@@ -175,7 +182,7 @@ cloud & 4 cores  & 40.2 ms \\
 \end{tabular}
 \end{table}
 
-\subsection{Load}
+\subsection{Workload}
 Players are mineflayer bots that speak the real game protocol: each walks,
 turns, and sends one timestamped chat message per second. The chat echo gives
 an in-game round-trip time through the server's main game thread. Bots run at
@@ -191,7 +198,7 @@ handshake (adds the host's accept path); server-list status ping (adds the
 server process); and in-game RTT (adds the game thread). Tick time (MSPT),
 CPU and player count are sampled every 5\,s from the server.
 
-\subsection{Protocol}
+\subsection{Measurement protocol}
 Each grid cell is one node at one load: 20\,s settle, 15\,s idle baseline,
 staggered joins, 90\,s steady window; only the steady window is analysed.
 edge1 is measured at 1, 10, 20, 30, 40, 50 and 60 players, the others at 1,
@@ -212,8 +219,92 @@ with $s$ the median of delay\,$\times(1-u)$ over stable cells (2.4\,ms).
 learning rate 0.05) on utilization, players and cores, predicting the
 logarithm of the server delay (p95 minus the network RTT), fitted on the
 first two grid replicates.
-\emph{Learned}: RTT plus a server delay predicted by gradient-boosted trees on
-utilization, players and cores.
+
+\subsection{Placement experiment}
+A batch of 40, 80, 120 or 160 players in matches of ten is
+split across the four nodes to minimise the worst player's predicted p95. For
+each model the optimum is found by exhaustive search.
+
+Every resulting placement is deployed on the testbed with
+all loaded nodes running at once, and measured with the same streams as the
+grid. No model's prediction is used to grade any model. Each placement was
+deployed once. With every node loaded at the same time the numbers differ
+from the grid's single-node cells: edge1 with 40 players measured 26\,ms
+deployed against 14.5\,ms in the grid, a difference we have not isolated
+(the client generates load for all nodes at once, and 40 is edge1's knee).
+
+
+\subsection{Live controller}
+Placement is also run as a controller on the live testbed. Every 2\,s it reads every
+bot's latency samples, and every 5\,s every server's player count, tick time
+and CPU; every 10\,s it may move one match (ten players) if the move lowers
+the predicted worst-player p95 by at least 10\,ms and at least 20\%, or
+leaves it unchanged and lowers the players' mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
+another, so its players reconnect. New matches land on the nearest node with
+room, as a distance-based matchmaker would place them, so two runs differ only
+in the model that drives the controller.
+
+
+\subsection{Evaluation metrics}
+Predictions are scored per cell against the measured p95: median and mean
+absolute error, and the median ratio between prediction and measurement.
+For the decision ``will this node break a budget at this load'' we report
+precision, recall and F1 at 50\,ms (one game tick) and 100\,ms. Model
+differences are checked with a paired bootstrap over cells. A placement is
+scored by the worst player's measured p95, and for a single match by the
+regret against the best node. A live run is scored by the worst node's p95
+at every tick: its median, its maximum and the share of the run above
+100\,ms, plus the number of moves and the time players spend reconnecting.
+
+\section{Implementation}
+
+\textbf{Testbed.} A containerlab topology file declares the client and the
+four servers and their links; \texttt{tc netem} sets each link's delay and a
+cgroup \texttt{cpu.max} quota on disjoint CPU sets caps each server. Every
+server runs the itzg/minecraft-server image with Paper 1.21.4. Before any
+measurement, \texttt{topology/verify.sh} checks link addresses, the netem
+queues, the RTT measured with \texttt{ping}, the CPU limits read back from
+the kernel, the host's power mode and the frozen game rules, and refuses to
+continue if any check fails.
+
+\textbf{Load and probes.} \texttt{bots/bot.js} (Node.js, mineflayer) runs
+ten bots per process; each joins, walks, turns and sends a timestamped chat
+message every second, and logs the round trip of every echo.
+\texttt{bots/probe.js} times the TCP handshake and the server-list ping, and
+\texttt{ping} the ICMP round trip, all against the same server at the same
+time. \texttt{controller/collect.sh} runs one grid cell (settle, baseline,
+joins, steady window) and samples tick time, CPU and players over RCON every
+5\,s; \texttt{grid.sh} sweeps every node's ladder.
+
+\textbf{Dataset and models.} \texttt{dataset/build\_dataset.py} joins the
+raw streams of every cell into 30\,s windows (106 cells, 318 rows).
+\texttt{placement/models.py} implements the three models behind one
+interface, \texttt{predict(node, players)}, so that every algorithm runs
+unchanged with any of them. \texttt{model/evaluate.py},
+\texttt{metrics.py} and \texttt{uncertainty.py} produce every score in
+Section~IV; \texttt{placement/experiment.py} runs the exhaustive search and
+\texttt{controller/deploy\_plan.sh} deploys each chosen placement.
+
+\textbf{Live controller.} \texttt{live/controller.py} runs the 2\,s tick
+loop; \texttt{live/testbed.py} starts and stops matches inside the client
+container, tails the bots' latency logs and reads each server's counters;
+\texttt{live/policy.py} holds the placement and move rules and the
+live-corrected model. A FastAPI server pushes the state to a browser
+dashboard over a WebSocket, and \texttt{live/load.sh} drives a session from
+a terminal: players join where the model chooses, a crowd can be forced onto
+a node, and a node's CPU can be cut and restored. Every run writes its
+settings, a per-tick timeline, every migration and a summary. 26 unit tests
+cover the decision rules, the log parsing and the live correction. A static
+build of the dashboard replays the recorded runs from their logs and is
+hosted on GitHub Pages.
+
+\textbf{Reproducibility.} The repository holds the topology, every raw
+measurement stream of every cell (including the discarded runs and the
+artefact that spoiled each), the dataset builder, the models, the placement
+experiment, the live controller with its dashboard and unit tests, and the
+run logs behind every table and figure here. One command per step rebuilds
+each artefact from the raw data.
+
 
 \section{Results}
 
@@ -315,19 +406,7 @@ learned    & 0.9 ms & 1.28$\times$ & 469 ms \\
 \end{tabular}
 \end{table}
 
-\section{Placement Evaluation}
-
-\textbf{Problem.} A batch of 40, 80, 120 or 160 players in matches of ten is
-split across the four nodes to minimise the worst player's predicted p95. For
-each model the optimum is found by exhaustive search.
-
-\textbf{Deployment.} Every resulting placement is deployed on the testbed with
-all loaded nodes running at once, and measured with the same streams as the
-grid. No model's prediction is used to grade any model. Each placement was
-deployed once. With every node loaded at the same time the numbers differ
-from the grid's single-node cells: edge1 with 40 players measured 26\,ms
-deployed against 14.5\,ms in the grid, a difference we have not isolated
-(the client generates load for all nodes at once, and 40 is edge1's knee).
+\subsection{Deployed placements}
 
 \begin{table}[t]
 \centering
@@ -347,7 +426,7 @@ players & analytical & queueing & learned \\
 \end{tabular}
 \end{table}
 
-\textbf{Result.} Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}. The
+Table~\ref{tab:deploy} and Fig.~\ref{fig:deploy}. The
 analytical model predicts 5--15\,ms for every scenario and fills the nearest
 node to its 100-player cap before using the next; from 80 players its worst
 players wait 18--30\,s, about 510 to 1500 times longer than under either
@@ -365,17 +444,7 @@ closed form reaches almost the same placement.
 \label{fig:deploy}
 \end{figure}
 
-\section{Closed-Loop Placement on the Testbed}
-
-The deployments above are static: one placement, measured once. We also ran
-placement as a controller on the live testbed. Every 2\,s it reads every
-bot's latency samples, and every 5\,s every server's player count, tick time
-and CPU; every 10\,s it may move one match (ten players) if the move lowers
-the predicted worst-player p95 by at least 10\,ms and at least 20\%, or
-leaves it unchanged and lowers the players' mean by 3\,ms, with a 60\,s cooldown per match. A move stops the match on one server and starts it on
-another, so its players reconnect. New matches land on the nearest node with
-room, as a distance-based matchmaker would place them, so two runs differ only
-in the model that drives the controller.
+\subsection{Live controller}
 
 \textbf{Same schedule, three controllers.} A match of ten players arrives
 every 25\,s up to 140 players, holds for 150\,s, and leaves until 60 remain
@@ -490,7 +559,7 @@ cost factor for edge1 (true value after the cut: 2).}
 \label{fig:drop}
 \end{figure}
 
-\section{Discussion}
+\subsection{Discussion}
 
 \textbf{When the formula is enough.} Below a node's knee the analytical model
 is within tens of milliseconds, and the ranking it produces is right: every
@@ -514,41 +583,7 @@ constant. A setting on the host cut it roughly threefold in our own rig (Section
 in our runs a CPU cut no model was told about was handled only by a
 controller that kept comparing its predictions with what it measured.
 
-\textbf{Reproducibility.} The repository holds the topology, every raw
-measurement stream of every cell (including the discarded runs and the
-artefact that spoiled each), the dataset builder, the models, the placement
-experiment, the live controller with its dashboard and unit tests, and the
-run logs behind every table and figure here. One command per step rebuilds
-each artefact from the raw data.
-
-\section{Threats to Validity}\label{sec:threats}
-
-\textbf{One host, three replicates.} All nodes share one laptop; the bootstrap
-intervals in Section~IV cover the variation between cells, not between
-whole replicates, of which there are only three. At the knees the replicates differ
-by 6--80$\times$, so the exact player count of a knee is not established.
-
-\textbf{Host power mode.} A node capped at half a core runs in short
-bursts, so the CPU governor keeps its clock low unless the host is in its
-performance power mode. All clean runs used that mode. In the balanced mode
-the same players cost 2--3$\times$ the CPU (edge1 with 20 players: 42\% of a
-core instead of 14--18\%) and edge1's knee fell below 20 players. One edge1
-pass and one full replicate were spoiled this way; they are excluded and kept
-as evidence. The same node, players and network, changed only by a setting no
-latency formula sees, moved the knee threefold.
-
-\textbf{Chosen, not discovered, capacities.} The core counts and delays were
-picked to create the trade-off. The claim is that an inversion exists, is
-large, and is avoided by a load-aware model, not that edge nodes fail at a
-particular player count. The 100-players-per-core capacity the queueing model
-uses is untested above one core.
-
-\textbf{Synthetic workload.} Bots walk and chat on a fixed schedule, and
-hostile mobs are disabled; real players and real mob AI add load of other
-shapes. The placement comparison covers four scenarios on four nodes; larger
-problems are where the load-aware models could differ.
-
-\section{Conclusion}
+\section{Conclusion and Future Work}\label{sec:threats}
 
 The load-blind latency model used to rank edge nodes is accurate only below a
 node's saturation point, and above it the error is not a few milliseconds but
@@ -563,7 +598,34 @@ handled only by a model that keeps learning from measurements and
 remembers the loads it has seen fail. The practical
 lesson is
 that the latency term in placement must see load, and that its shape is
-better measured than assumed. Future work: more replicates on dedicated
+better measured than assumed.
+
+\textbf{Limitations.} \emph{One host, three replicates.} All nodes share one laptop; the bootstrap
+intervals in Section~IV cover the variation between cells, not between
+whole replicates, of which there are only three. At the knees the replicates differ
+by 6--80$\times$, so the exact player count of a knee is not established.
+
+\emph{Host power mode.} A node capped at half a core runs in short
+bursts, so the CPU governor keeps its clock low unless the host is in its
+performance power mode. All clean runs used that mode. In the balanced mode
+the same players cost 2--3$\times$ the CPU (edge1 with 20 players: 42\% of a
+core instead of 14--18\%) and edge1's knee fell below 20 players. One edge1
+pass and one full replicate were spoiled this way; they are excluded and kept
+as evidence. The same node, players and network, changed only by a setting no
+latency formula sees, moved the knee threefold.
+
+\emph{Chosen, not discovered, capacities.} The core counts and delays were
+picked to create the trade-off. The claim is that an inversion exists, is
+large, and is avoided by a load-aware model, not that edge nodes fail at a
+particular player count. The 100-players-per-core capacity the queueing model
+uses is untested above one core.
+
+\emph{Synthetic workload.} Bots walk and chat on a fixed schedule, and
+hostile mobs are disabled; real players and real mob AI add load of other
+shapes. The placement comparison covers four scenarios on four nodes; larger
+problems are where the load-aware models could differ.
+
+\textbf{Future work.} more replicates on dedicated
 hardware, nodes pushed past their knees at higher core counts, larger
 placement problems, state handover instead of reconnection, and network
 impairments that make the bandwidth term
