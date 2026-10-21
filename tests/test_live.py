@@ -224,3 +224,22 @@ def test_live_policy_remembers_a_measured_violation(monkeypatch):
     assert mv is None or mv["dst"] != "edge1"
     clock[0] += lp.LivePolicy.HOLD_S + 1       # ... until the memory expires
     assert p.predict("edge1", 30) < 900.0
+
+
+def test_join_places_each_match_where_the_model_predicts_best(monkeypatch, tmp_path):
+    from live import controller as ctl
+    from live import testbed as tbm
+    started = []
+    monkeypatch.setattr(tbm, "start_match",
+                        lambda run, mid, node, seg: started.append((mid, node)) or tmp_path / f"{mid}.csv")
+    r = ctl.Run.__new__(ctl.Run)
+    r.policy = make()                         # stub model: knee at 40 players per core
+    r.nodes = {n["name"]: n for n in NODES}
+    r.matches, r.events, r.load_since, r.id = {}, [], {}, "test"
+    r.log = __import__("collections").deque(maxlen=50)
+    r.t0 = None
+    r.join(4, "terminal")
+    # edge1 (0.5 core) stays flat to 20 players, so two matches fit there before
+    # edge2 becomes the better choice
+    assert [n for _, n in started] == ["edge1", "edge1", "edge2", "edge2"]
+    assert all("predicted" in e["text"] for e in r.log)
