@@ -87,7 +87,9 @@ def fig_drop(runs, path):
     for r in runs:
         p = r["meta"]["policy"]
         e = [(x["t"], x["nodes"]["edge1"]) for x in r["tl"]]
-        pts = [(t, n["p95_ms"]) for t, n in e if n.get("p95_ms")]
+        # no players on edge1 = no latency: a gap in the line, not a ramp
+        pts = [(t, n["p95_ms"] if n.get("players") and n.get("p95_ms") else float("nan"))
+               for t, n in e]
         ax.plot(*zip(*pts), color=COLOR[p], lw=1.6, label=LABEL[p])
         axn.plot([t for t, _ in e], [n["players"] for _, n in e], color=COLOR[p], lw=1.4)
         if p == "learned-live":
