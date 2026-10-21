@@ -536,3 +536,46 @@ The workload is now players only; the earlier replicates are kept as
 **Why this matters beyond the testbed.** It is a real effect - mob AI is
 server work that scales with players - but it is a second load source the
 experiment does not control. Freezing it keeps "players" the only variable.
+
+## 6.19 A whole replicate measured 2-3x slower, on an idle host
+
+**Symptom.** The third grid replicate (`grid3`, morning of 2026-10-21) cost
+two to three times the CPU per player on every node and every cell: edge1
+with 20 players used 43.7% of a core where `grid1` and `grid2` used 14-15%,
+and its p95 was 5.5 s instead of 8 ms. The knee moved from 50-60 players to
+under 20. `verify.sh` passed.
+
+**Ruled out, in order.** Host activity (re-probed with the host idle: still
+42%); JVM age (the servers had run for 11 hours; a fresh `up.sh` and warm-up
+gave 42.4%); new operator entries (bot0-bot99 were already ops in `grid1`);
+bots wandering (all within 30 blocks of spawn); memory, swap and IO pressure
+(all zero); CPU frequency caps (none, turbo on).
+
+**Cause.** The laptop's power mode. `/var/log/tuned/tuned.log` shows
+`throughput-performance` (GNOME's Performance mode) from 23:56 the night
+before, then `balanced-battery` at 07:52 and `balanced` at 08:00: the charger
+was unplugged briefly and GNOME left Performance mode, and plugging back in
+does not restore it. A node capped at half a core runs in short bursts, so
+under `balanced` the governor saw a mostly idle core and kept it at
+0.8-2 GHz (5.3 GHz possible), and the same work took 2-3x the CPU time. The
+same edge1 cell, minutes apart, one per mode: 42.4% vs 17.8%
+(`results/raw/probe-balanced`, `probe-performance`).
+
+It also explains `grid1-edge1-contended` (6.x, 08 §8.6): `grid1` started at
+23:43 in Balanced mode and the switch to Performance came 13 minutes in,
+during the edge1 cells. It had been blamed on interactive use of the laptop.
+
+**Fix.** Set Performance mode (GNOME menu, or without the GUI:
+`gdbus call --system --dest org.freedesktop.UPower.PowerProfiles
+--object-path /org/freedesktop/UPower/PowerProfiles --method
+org.freedesktop.DBus.Properties.Set org.freedesktop.UPower.PowerProfiles
+ActiveProfile "<'performance'>"`). `verify.sh` now fails unless
+`tuned-adm active` reports `throughput-performance`, and every live run
+records the mode in its `meta.json` and warns in its event log. The bad
+replicate is kept as `results/raw/grid3-balanced`; `grid3` was re-measured.
+
+**Why this matters beyond the testbed.** Nothing about the network, the
+players or the server changed, and the smallest node's capacity fell
+threefold. A latency formula cannot see it; a model fitted on measurements
+taken in one mode is wrong in the other. It is the same blind spot the
+project is about, found in the measurement rig itself.
