@@ -182,6 +182,30 @@ better than a correctly fitted closed form. One host, three replicates, capaciti
 ![measured p95 per node vs the load-blind model](figures/fig1_p95_vs_players.png)
 ![each model's placement, deployed and measured](figures/fig5_deployments.png)
 
+## Live controller
+
+The same models drive a real-time controller on the testbed (`live/`,
+[docs/09-live.md](docs/09-live.md)): every 2 s it reads every bot's latency
+and every server's counters, every 10 s it may move one match of ten players,
+and a dashboard on `http://127.0.0.1:8090` shows the twin, the raw telemetry
+and every model's prediction as it happens. Load is driven from a terminal
+(`live/load.sh add edge1 60`, `throttle edge1 0.25`, ...). To show it to
+someone, follow [the demo guide](docs/demo-guide/guide.pdf).
+
+| run, worst node's p95 | median | time over 100 ms | moves |
+|---|---|---|---|
+| same 13-min schedule, load-blind controller | 1 058 ms | 53% | 0 |
+| same 13-min schedule, learned controller | 33 ms | 18% | 10 |
+| edge1's CPU halved mid-run, learned (offline) | 528 ms | 74% | 4 |
+| edge1's CPU halved mid-run, learned corrected live | 24 ms | 2.2% | 8 |
+
+The load-blind controller never moves a match; the offline learned model does
+not notice a node that silently got slower; a model that keeps correcting
+itself from measurements does. Each run was done once; read
+[§9.6](docs/09-live.md) for what each number does and does not show.
+
+![the same schedule under each controller](figures/fig6_live_ab.png)
+
 ## Earlier results (superseded or background)
 
 ### Measured node capacity (warm worlds, 2026-08-11; day/night cycle was running)
