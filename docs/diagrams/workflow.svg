@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 600" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif" role="img" aria-labelledby="wf-title wf-desc">
+  <title id="wf-title">Project workflow</title>
+  <desc id="wf-desc">Offline: the load grid is measured, built into a dataset, and the three latency models are fitted. Live: matches arrive on the testbed, telemetry is read every 2 seconds, per-node latency windows are computed, every model predicts, the controller decides whether to move a match, the match is migrated, and the loop repeats. The dashboard shows every stage.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8e98a8"/></marker>
+    <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5189c8"/></marker>
+    <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c9963e"/></marker>
+    <style>
+      .lane{fill:#14171b;stroke:#22262b}
+      .lt{fill:#8e98a8;font-size:11px;font-weight:600;letter-spacing:.8px}
+      .box{fill:#181b1f;stroke:#2c3035;stroke-width:1.2}
+      .boxk{fill:#1c222e;stroke:#2b4a72;stroke-width:1.2}
+      .boxa{fill:#2a2418;stroke:#6a5420;stroke-width:1.2}
+      .n{fill:#5d6778;font:700 10px ui-monospace,Consolas,monospace}
+      .h{fill:#d7dbe2;font-size:13px;font-weight:600}
+      .b{fill:#8e98a8;font-size:11px}
+      .m{fill:#8e98a8;font:11px ui-monospace,Consolas,monospace}
+      .ln{stroke:#8e98a8;stroke-width:1.4;fill:none}
+      .lb{stroke:#5189c8;stroke-width:1.6;fill:none}
+      .la{stroke:#c9963e;stroke-width:1.6;fill:none}
+      .cap{fill:#8e98a8;font-size:10.5px}
+    </style>
+  </defs>
+  <rect width="1240" height="600" fill="#111217"/>
+
+  <!-- offline lane -->
+  <rect class="lane" x="16" y="16" width="1208" height="150" rx="3"/>
+  <text class="lt" x="32" y="38">OFFLINE, ONCE</text>
+
+  <rect class="box" x="32" y="52" width="250" height="98" rx="3"/>
+  <text class="n" x="44" y="70">A</text>
+  <text class="h" x="58" y="71">Load grid</text>
+  <text class="b" x="44" y="92">Each node swept on its own ladder,</text>
+  <text class="b" x="44" y="108">1 to 100 players, 90 s per cell,</text>
+  <text class="b" x="44" y="124">2 replicates (grid1, grid2)</text>
+  <text class="m" x="44" y="141">controller/grid.sh</text>
+
+  <rect class="box" x="322" y="52" width="250" height="98" rx="3"/>
+  <text class="n" x="334" y="70">B</text>
+  <text class="h" x="348" y="71">Dataset</text>
+  <text class="b" x="334" y="92">Raw streams joined into 30 s rows:</text>
+  <text class="b" x="334" y="108">node, cores, players, utilization</text>
+  <text class="b" x="334" y="124">to measured p50 / p95 / p99</text>
+  <text class="m" x="334" y="141">data/dataset.csv</text>
+
+  <rect class="boxk" x="612" y="52" width="290" height="98" rx="3"/>
+  <text class="n" x="624" y="70">C</text>
+  <text class="h" x="638" y="71">Fit the three latency models</text>
+  <text class="b" x="624" y="92">Analytical: RTT + size / bandwidth</text>
+  <text class="b" x="624" y="108">Queueing: RTT + s / (1 - u)</text>
+  <text class="b" x="624" y="124">Learned: RTT + trees on (u, players, cores)</text>
+  <text class="m" x="624" y="141">placement/models.py</text>
+
+  <rect class="box" x="942" y="52" width="266" height="98" rx="3"/>
+  <text class="n" x="954" y="70">D</text>
+  <text class="h" x="968" y="71">Score and deploy, offline</text>
+  <text class="b" x="954" y="92">Out-of-sample error, F1, ranking;</text>
+  <text class="b" x="954" y="108">each model's placement deployed</text>
+  <text class="b" x="954" y="124">and measured once</text>
+  <text class="m" x="954" y="141">docs/08-results.md</text>
+
+  <path class="ln" d="M282 101H318" marker-end="url(#ar)"/>
+  <path class="ln" d="M572 101H608" marker-end="url(#ar)"/>
+  <path class="ln" d="M902 101H938" marker-end="url(#ar)"/>
+  <path class="lb" d="M853 150V240" marker-end="url(#arb)"/>
+  <text class="cap" x="862" y="200">fitted models loaded</text>
+  <text class="cap" x="862" y="214">at the start of a run</text>
+
+  <!-- live lane -->
+  <rect class="lane" x="16" y="182" width="1208" height="300" rx="3"/>
+  <text class="lt" x="32" y="204">LIVE LOOP, EVERY 2 SECONDS</text>
+
+  <rect class="box" x="32" y="244" width="156" height="118" rx="3"/>
+  <text class="n" x="44" y="262">1</text>
+  <text class="h" x="58" y="263">Demand</text>
+  <text class="b" x="44" y="284">Matches of 10 players</text>
+  <text class="b" x="44" y="300">arrive and leave on a</text>
+  <text class="b" x="44" y="316">fixed schedule, same</text>
+  <text class="b" x="44" y="332">for every run</text>
+  <text class="m" x="44" y="352">scenario</text>
+
+  <rect class="box" x="214" y="244" width="166" height="118" rx="3"/>
+  <text class="n" x="226" y="262">2</text>
+  <text class="h" x="240" y="263">Testbed</text>
+  <text class="b" x="226" y="284">4 game servers:</text>
+  <text class="m" x="226" y="301">edge1 0.5c 5ms</text>
+  <text class="m" x="226" y="316">edge2 1c 15ms</text>
+  <text class="m" x="226" y="331">edge3 2c 30ms</text>
+  <text class="m" x="226" y="346">cloud 4c 40ms</text>
+
+  <rect class="box" x="406" y="244" width="170" height="118" rx="3"/>
+  <text class="n" x="418" y="262">3</text>
+  <text class="h" x="432" y="263">Telemetry</text>
+  <text class="b" x="418" y="284">Every bot: in-game RTT,</text>
+  <text class="b" x="418" y="300">one chat echo per second</text>
+  <text class="b" x="418" y="320">Every server, 5 s:</text>
+  <text class="b" x="418" y="336">players, tick time, CPU</text>
+  <text class="m" x="418" y="352">live/testbed.py</text>
+
+  <rect class="box" x="602" y="244" width="150" height="118" rx="3"/>
+  <text class="n" x="614" y="262">4</text>
+  <text class="h" x="628" y="263">Measure</text>
+  <text class="b" x="614" y="284">Per node, last 10 s:</text>
+  <text class="b" x="614" y="300">p50 and p95 latency.</text>
+  <text class="b" x="614" y="320">Worst node = the</text>
+  <text class="b" x="614" y="336">worst-off players</text>
+
+  <rect class="boxk" x="778" y="244" width="150" height="118" rx="3"/>
+  <text class="n" x="790" y="262">5</text>
+  <text class="h" x="804" y="263">Predict</text>
+  <text class="b" x="790" y="284">Each model predicts</text>
+  <text class="b" x="790" y="300">p95 for every node at</text>
+  <text class="b" x="790" y="316">its current load, and</text>
+  <text class="b" x="790" y="332">for every possible move</text>
+
+  <rect class="boxa" x="954" y="244" width="124" height="118" rx="3"/>
+  <text class="n" x="966" y="262">6</text>
+  <text class="h" x="980" y="263">Decide</text>
+  <text class="b" x="966" y="284">Every 10 s:</text>
+  <text class="b" x="966" y="300">move one match if</text>
+  <text class="b" x="966" y="316">worst drops 10 ms</text>
+  <text class="b" x="966" y="332">and 20%; 60 s</text>
+  <text class="b" x="966" y="348">cooldown</text>
+
+  <rect class="boxa" x="1100" y="244" width="108" height="118" rx="3"/>
+  <text class="n" x="1112" y="262">7</text>
+  <text class="h" x="1126" y="263">Migrate</text>
+  <text class="b" x="1112" y="284">Stop the match</text>
+  <text class="b" x="1112" y="300">on node A,</text>
+  <text class="b" x="1112" y="316">start it on B;</text>
+  <text class="b" x="1112" y="332">players</text>
+  <text class="b" x="1112" y="348">reconnect</text>
+
+  <path class="ln" d="M188 303H210" marker-end="url(#ar)"/>
+  <path class="ln" d="M380 303H402" marker-end="url(#ar)"/>
+  <path class="ln" d="M576 303H598" marker-end="url(#ar)"/>
+  <path class="ln" d="M752 303H774" marker-end="url(#ar)"/>
+  <path class="ln" d="M928 303H950" marker-end="url(#ar)"/>
+  <path class="la" d="M1078 303H1096" marker-end="url(#ara)"/>
+  <!-- the loop back -->
+  <path class="la" d="M1154 362V412H297V366" marker-end="url(#ara)"/>
+  <text class="cap" x="560" y="432">the moved match now runs on another node, and the next tick measures the result</text>
+
+  <!-- dashboard -->
+  <rect class="lane" x="16" y="498" width="1208" height="86" rx="3"/>
+  <text class="lt" x="32" y="520">WATCH AND COMPARE</text>
+  <rect class="box" x="214" y="530" width="538" height="44" rx="3"/>
+  <text class="h" x="228" y="557">Dashboard</text>
+  <text class="b" x="310" y="557">live node cards, worst-player latency, every model in shadow, events</text>
+  <rect class="box" x="778" y="530" width="430" height="44" rx="3"/>
+  <text class="h" x="792" y="557">Run logs</text>
+  <text class="b" x="862" y="557">results/live/&lt;run&gt;: timeline, migrations, summary</text>
+  <path class="ln" d="M677 362V526" marker-end="url(#ar)"/>
+  <path class="ln" d="M853 362V526" marker-end="url(#ar)"/>
+  <text class="cap" x="32" y="557">pushed every 1 s</text>
+</svg>
