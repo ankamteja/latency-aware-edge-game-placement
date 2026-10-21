@@ -130,7 +130,54 @@ Both runs appear on the *Compare runs* page.
 
 ## 9.6 Results
 
-TODO after the live runs.
+All runs on 2026-10-21, host in Performance power mode, logs in
+`results/live/<run>/`. Figures: `python3 -m live.figures`.
+
+### The standard schedule, formula against learned
+
+`live/ab.sh standard`: the same arrivals and departures (a match of 10 every
+25 s up to 140 players, held 150 s, then down to 60), new matches landing on
+the nearest node with room (a distance-based matchmaker), each controller free
+to move one match every 10 s.
+
+| controller | worst node's p95, median | worst p95, max | time over 100 ms | samples over 100 ms | all samples' p95 | migrations | mean reconnect |
+|---|---|---|---|---|---|---|---|
+| analytical (load-blind) | 1 058 ms | 19.6 s | 53% | 35.6% | 12.8 s | 0 | - |
+| learned | **33 ms** | **817 ms** | **18%** | **2.0%** | **35 ms** | 10 | 5.9 s |
+
+![worst p95 over time, both controllers](../figures/fig6_live_ab.png)
+
+- The analytical controller never moves a match: edge1 fills to 100 players,
+  its p95 goes past 10 s and stays there until departures empty it. That is
+  the offline placement result reproduced in closed loop.
+- The learned controller's worst p95 still crosses 100 ms 18% of the time.
+  Every one of those is the same transient: a new match lands on edge1 (the
+  matchmaker puts it there), edge1 goes past its knee for the 10-25 s it
+  takes the controller to move a match away. With matches placed by the
+  model itself (`arrival=model`) the transient would not exist; the nearest
+  arrival is kept so that the two runs differ only in the controller.
+- After the peak the learned controller leaves the worst player at about
+  32 ms (a match on edge3) while the analytical one, its edge1 now nearly
+  empty, is at 17 ms. Moving a match back costs ten players a reconnect, and
+  the mean-gain threshold (3 ms) and 60 s cooldown hold some of them where
+  they are.
+
+**Every model in shadow.** Each 10 s window of steady load on a node is
+also scored against every model's prediction for it, made before the window
+was seen. In the analytical run (91 windows, 28 of them over 100 ms; the
+regime where the decision matters):
+
+| model | median error | F1, p95 > 100 ms |
+|---|---|---|
+| analytical | 4.8 ms | 0.00 |
+| queueing | 9.2 ms | 0.87 |
+| learned | 6.0 ms | 0.87 |
+| learned, corrected live | **2.0 ms** | **0.95** |
+
+In the learned run only 7 of 137 windows break 100 ms, all of them arrival
+transients no model can see coming from players and cores alone; every
+model's F1 there is 0 to 0.25 and is not a meaningful comparison.
+
 
 ## 9.7 Limits
 
