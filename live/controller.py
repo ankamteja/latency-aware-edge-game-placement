@@ -412,6 +412,20 @@ class Run:
                 "started": time.strftime("%Y-%m-%d %H:%M:%S")}
         write_atomic(self.dir / "meta.json", json.dumps(meta, indent=2))
         tb.stop_all()
+        # a run that died without its finally (process killed mid-throttle)
+        # leaves a node slower than every model assumes: undo it first
+        for n, spec in self.nodes.items():
+            try:
+                q = tb.cpu_quota(n)
+                if q is None or abs(q - spec["cores"]) < 1e-6:
+                    continue
+                tb.set_cpu(n, spec["cores"])
+            except Exception as e:
+                self.note("reject", f"could not check {n}'s CPU quota: {e}")
+                continue
+            self.note("capacity", f"{n} CPU was {q:g} cores from an earlier run, "
+                      f"restored to {spec['cores']:g}", node=n, cores=spec["cores"],
+                      source="startup")
         # same gate as every grid cell: nothing from a previous run attached
         self.status = "waiting for empty servers"
         for _ in range(45):
