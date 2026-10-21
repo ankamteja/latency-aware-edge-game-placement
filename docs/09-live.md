@@ -173,102 +173,116 @@ figures 6 and 7.
 
 ### The standard schedule under each controller
 
-`live/ab.sh standard` and a third run with `queueing`: the same arrivals and
-departures (a match of 10 every 25 s up to 140 players, held 150 s, then down
-to 60), new matches landing on the nearest node with room (a distance-based
-matchmaker), each controller free to move one match every 10 s. One run each.
+The same arrivals and departures (a match of 10 every 25 s up to 140 players,
+held 150 s, then down to 60), new matches landing on the nearest node with
+room (a distance-based matchmaker), each controller free to move one match
+every 10 s. **Three runs per controller**; every cell is the median over the
+runs with [lowest, highest].
 
 | controller | worst node's p95, median | worst p95, max | time over 100 ms | samples over 100 ms | all samples' p95 | migrations | mean reconnect |
 |---|---|---|---|---|---|---|---|
-| analytical (load-blind) | 1 058 ms | 19.6 s | 53% | 35.6% | 12.8 s | 0 | - |
-| queueing (M/M/1) | 166 ms | 5.7 s | 53% | 25.7% | 1.8 s | 11 | 6.3 s |
-| learned | **33 ms** | **817 ms** | **18%** | **2.0%** | **35 ms** | 10 | 5.9 s |
+| analytical (load-blind) | 1.1 s [76 ms, 4.5 s] | 29.8 s [19.6, 31.8] | 53% [46, 62] | 35.6% [33.6, 40.1] | 13.0 s [12.8, 14.6] | 0 | - |
+| queueing (M/M/1) | 99 ms [72, 166] | 3.8 s [3.5, 5.7] | 50% [46, 53] | 15.3% [11.3, 25.7] | 756 ms [434 ms, 1.8 s] | 11 | 6.3 s [6.2, 6.3] |
+| learned | **39 ms [33, 47]** | 3.6 s [0.8, 5.8] | **33% [18, 41]** | **7.9% [2.0, 10.3]** | **338 ms [35, 729]** | 10 | 6.1 s [5.9, 6.2] |
 
 ![worst p95 over time under each controller](../figures/fig6_live_ab.png)
 
+Figure 6 shows each controller's median run.
+
 - **The analytical controller never moves a match.** edge1 fills to 100
-  players, its p95 goes past 10 s and stays there until departures empty it:
-  the offline placement result, reproduced in closed loop.
-- **Queueing moves as often as learned but to the wrong place, once.** Its
-  curve depends on utilization alone, so it rates edge2 at 80 players
-  (u = 0.8) at 27 ms. edge2's measured knee is at 80 players (one grid replicate already at 2.7 s);
-  live it sat at 1.8-3.4 s for about 200 s. The learned model predicts 65 ms
-  for edge2 at 80, so it stopped edge2 at 70 and sent the overflow to edge3.
-  This is the "one curve is not enough" effect of 08 §8.2 deciding a
+  players and its p95 is in the seconds for minutes: the offline placement
+  result, reproduced in closed loop. In one run (`...173951655`) edge1's p95
+  fell back to about 100 ms after 360 s with 100 players still assigned,
+  while its tick time fell from 280 to 10-35 ms. The timeline records
+  assigned players, not connected ones, so this is not confirmed, but it
+  matches the deployments, where an overloaded edge1 kept only 63-71 of 100
+  (bots time out). That run is why the analytical median spans 76 ms to 4.5 s.
+- **Queueing moves as often as learned but to the wrong place, in every run.**
+  Its curve depends on utilization alone, so it rates edge2 at 80 players
+  (u = 0.8) at 27 ms. edge2's measured knee is at 80 players. In all three
+  runs it loaded edge2 to 80, and edge2's p95 stayed above 1 s for 14 to
+  174 s, peaking at 1.7-4.9 s. The learned model predicts 65 ms for edge2 at
+  80, so in all three runs it stopped edge2 at 70 and sent the overflow to
+  edge3. This is the "one curve is not enough" effect of 08 §8.2 deciding a
   placement. Offline, at the four deployed scenarios, the two models placed
   almost the same; here they do not.
-- **Part of the gap is the knee itself.** Both runs held edge1 at 40 players,
-  exactly at its knee. In the queueing run edge1 stayed backlogged after
-  arrival spikes (0.5-5.7 s); in the learned run it recovered (about 12 ms).
-  That difference is chance at the knee, not the model. One run per
-  controller cannot separate the two effects; the edge2 decision is
-  systematic, the edge1 one is not.
-- **The learned controller's remaining 18% over budget** is one transient
-  repeated: a new match lands on edge1 (the matchmaker puts it there), edge1
-  goes past its knee for the 10-25 s it takes the controller to move a match
-  away. With matches placed by the model itself (`arrival=model`) it would
-  not exist; the nearest arrival is kept so that the runs differ only in the
-  controller.
+- **The learned controller's time over budget is edge1 at its knee.** Almost
+  every tick over 100 ms (all of them in two runs, 150 of 159 in the third)
+  is edge1 holding 40 players. The grid measured 14.5 ms there; live, with
+  every node loaded, edge1 at 40 is often backlogged, as in the deployed
+  placements (26 ms against 14.5 ms in the grid). The learned model has no
+  way to see that, and the queueing runs share the same edge1 problem on top
+  of edge2's.
+- **Not every metric separates them.** The worst single moment (max) is in
+  the seconds for both load-aware controllers and their ranges overlap;
+  the medians, time over budget and share of samples over budget do not.
 
 **Every model in shadow.** Each 10 s window of steady load on a node is also
 scored against every model's prediction for it, made before the window was
-seen. F1 for "this node is over 100 ms":
+seen. F1 for "this node is over 100 ms", median [lowest, highest] over the
+three runs of each controller (91-137 windows per run, 7-36 of them over
+100 ms):
 
-| run (windows, of them over 100 ms) | analytical | queueing | learned | learned, corrected live |
+| in control | analytical | queueing | learned | learned, corrected live |
 |---|---|---|---|---|
-| analytical in control (91, 28) | 0.00 | 0.87 | 0.87 | **0.95** |
-| queueing in control (127, 36) | 0.00 | 0.00 | 0.00 | **0.78** |
+| analytical | 0.00 | 0.87 [0.74, 0.87] | 0.87 [0.73, 0.88] | **0.94 [0.77, 0.95]** |
+| queueing | 0.00 | 0.00 | 0.00 | **0.71 [0.65, 0.78]** |
+| learned | 0.00 | 0.00 | 0.00 | **0.35 [0.25, 0.52]** |
 
-In the queueing run the windows over budget are edge1 backlogged at 40 and
-edge2 at 80: places where every offline model predicts a healthy node. Only
-the model that corrects itself from the measurements catches them. (In the
-learned run only 7 of 137 windows break 100 ms, all arrival transients; every
-model's F1 there is 0 to 0.25 and is not a meaningful comparison.)
+Under the queueing and learned controllers the windows over budget are edge1
+backlogged at 40 and edge2 at 80: loads every offline model calls healthy,
+so all three score 0 in all six runs. Only the model that corrects itself
+from the measurements catches some of them.
 
 ### A node gets slower and no model is told
 
 `capacity-drop`: 8 matches arrive on the nearest node and stay; at 220 s
 edge1's CPU quota is cut from 0.5 to 0.25 cores (`docker update`, the change a
-noisy neighbour or a smaller VM makes) and nothing tells any model. 9 minutes
-per run.
+noisy neighbour or a smaller VM makes) and nothing tells any model. The
+change takes effect at 222-224 s; "after the cut" below starts there.
+9 minutes per run.
 
-| controller | runs | time over 100 ms, whole run | after the cut: time over 100 ms | after the cut: worst p95, median | edge1 after the cut |
-|---|---|---|---|---|---|
-| queueing | 1 | 83% | 100% | 7.1 s | keeps 40 players |
-| learned (offline) | 2 | 74%, 82% | 99%, 99% | 670 ms, 13.8 s | keeps 40 players |
-| learned, corrected live, first version | 1 | 20% | 21% | 30 ms | 40, then 20, then back to 30 |
-| learned, corrected live, with violation memory | 2 | **2%, 14%** | **4%, 13%** | **24 ms, 43 ms** | 20 or fewer within 30 s |
+| controller | runs | edge1's players just before the cut | time over 100 ms, whole run | after the cut: time over 100 ms |
+|---|---|---|---|---|
+| queueing | 3 | 40, 40, 40 | 83% [80, 85] | 100% [99, 100] |
+| learned (offline) | 3 | 40, 40, 40 | 82% [74, 84] | 100% [99, 100] |
+| learned, corrected live, first version | 1 | 40 | 20% | 21% |
+| learned, corrected live, with violation memory | 3 | **30, 0, 10** | 9% [2, 14] | 6% [4, 13] |
 
 ![edge1 under the CPU cut](../figures/fig7_live_capacity_drop.png)
 
 - **Neither offline model notices.** Both keep using the curve measured at
   0.5 cores: 40 players still look healthy, edge1's p95 sits at 0.2 s to
-  tens of seconds for the last five minutes, and the controller never acts.
-- **The first live-corrected version noticed, then forgot.** Its cost factor
-  rose to 1.65 within 80 s of the cut and it moved two matches off. With
-  edge1 down to 20 players the windows looked healthy (20 players on a
-  quarter core are still below the new knee), the factor decayed back to
-  0.9, and at 440 s it moved a match back, which saw 3.9 s for about 20 s.
-  One scale factor cannot hold what it learned at the knee once the load is
-  below it.
+  tens of seconds after the cut, and the controller never acts. Six runs,
+  same result.
+- **The first live-corrected version noticed, then forgot.** It moved two
+  matches off, 27 and 67 s after the cut. With edge1 down to 20 players the
+  windows looked healthy (20 players on a quarter core are still below the
+  new knee), the factor decayed, and at 440 s it moved a match back, which
+  saw up to 4.1 s. One scale factor cannot hold what it learned at the knee
+  once the load is below it.
 - **The fix.** A window measured over 100 ms is remembered: for 5 minutes
   the live model predicts at least that latency for that node at that load
   or more (`LivePolicy.broke`, tested in `tests/test_live.py`). Windows in
   which no cost factor can change the prediction by 1.5x no longer move the
   factor.
-- **Two runs of the fixed version: 2% and 14% over budget.** Both keep
-  edge1 light after the cut and are an order of magnitude better than the
-  offline models (74-83%). The spread between them is the honest result.
-  The second run's over-budget time came from three places: arrival spikes
-  before the cut, as in every run; its own moves (four matches moved within
-  40 s around the cut, and each reconnect briefly loads the node it lands
-  on); and the memory expiring at 500 s, after which it moved one match
-  back to the throttled edge1, where the ten rejoining players saw 3-4 s.
-  Moves are not free and a memory that expires means probing again; the
-  controller models neither.
-- **Read with care.** The memory was designed after the first run, and each
-  configuration ran once or twice. This shows the mechanism, not a tuned or
-  validated result.
+- **Only one of the three runs with memory tests detection.** The
+  correction also learns from windows in which a new match is still logging
+  in: with only the first 10 players joining, edge1's p95 was 16-69 ms and
+  the factor jumped from 1.0 to 1.9. Every later arrival lands on edge1 (the
+  nearest node), so in two runs the factor was already 2.2 and 3.1 before
+  the cut, and the controller had left edge1 with 0 and 10 players. Those two
+  runs show a controller staying off a node it already distrusts, not one
+  noticing a change. In the third (`...112507411`) edge1 held 30 players at
+  the cut and the controller moved a match off 27 s later.
+- **Its caution is not free.** 8-12 moves against the offline models' 4; in
+  `...150643068` the memory expired at 500 s, it moved a match back to the
+  throttled edge1, and the rejoining players saw up to 4.5 s.
+- **Read with care.** The memory was designed after the first run, the
+  login-window effect was found afterwards, and the live correction has not
+  yet been run on the standard schedule. This shows the mechanism, not a
+  tuned or validated result. Ignoring windows in which players are still
+  joining is the obvious next change.
 
 ## 9.7 Limits
 
@@ -286,4 +300,8 @@ per run.
 - The models were fitted with the host in Performance power mode. Run the live
   system in the same mode (`topology/verify.sh` checks it); in Balanced mode
   every node is 2-3x slower than every offline model believes (08 §8.6).
+- Three runs per configuration; ranges are wide (9.6), so they show
+  direction, not effect sizes.
+- The timeline records players assigned to each node, not players
+  connected; the server's own count is read but not saved.
 - One host. Everything in docs/08-results.md 8.6 applies.
