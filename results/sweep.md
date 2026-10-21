@@ -29,7 +29,7 @@ moves. Everything that does move is server-side queueing.
 
 - Paper 1.21.4 (`itzg/minecraft-server`), `--cpus=0.5`, localhost
 - Server booted from the cached jar via `TYPE=CUSTOM` /
-  `CUSTOM_SERVER=/data/paper-1.21.4-232.jar` — `papermc.io` was returning
+  `CUSTOM_SERVER=/data/paper-1.21.4-232.jar` - `papermc.io` was returning
   connection resets, and the default PAPER type re-checks the download API on
   every start. CUSTOM runs the existing jar with no network dependency.
 - `connection-throttle: -1`, `max-players=100`, bots `bot0..bot39` opped
@@ -53,14 +53,14 @@ moves. Everything that does move is server-side queueing.
 | 40 | 3029 | 0 | 40 | 40 | 69 | 224 | 583  | 1241 | ~50% (capped) |
 
 All times in ms. `players held` is the live server-reported count during the
-run — the load was sustained at N in every row, no dropouts.
+run - the load was sustained at N in every row, no dropouts.
 
 ## Reading it
 
 - **Median** climbs 2 → 40 ms (≈20×) and **p95** climbs 15 → 224 ms (≈15×) as
   bot count goes 1 → 40. Both are monotonic. The analytical model's prediction
   is a flat line across this whole range.
-- The damage is worst in the tail — the metric that matters for placement is
+- The damage is worst in the tail - the metric that matters for placement is
   the worst player, not the average one.
 - **CPU** pins at the 0.5-core cap (49.8–50.2%) at N=40. The server is
   compute-starved exactly where RTT blows up, which is the causal link: no
@@ -69,7 +69,7 @@ run — the load was sustained at N in every row, no dropouts.
 
 ## Caveats
 
-- `*` N=10 tail is non-monotonic (p99 929, max 1306 — above N=20). This is a
+- `*` N=10 tail is non-monotonic (p99 929, max 1306 - above N=20). This is a
   transient: 38 of 796 samples (~5%) landed in a single 400–1300 ms burst,
   i.e. one multi-second server hitch that hit all 10 bots at once, not a steady
   state. Median and p95 for N=10 sit on the trend; the tail for that one run
@@ -78,23 +78,23 @@ run — the load was sustained at N in every row, no dropouts.
 - Bots and server share one host. Some fraction of the tail could be
   client-side scheduling on the load generator rather than server queueing.
   Isolating this needs a concurrent network-only probe (probe RTT), which
-  `bot.js` does not yet emit — the next real gap to close.
+  `bot.js` does not yet emit - the next real gap to close.
 
 ## Conclusion
 
 Confirms and extends the de-risk result across a full load sweep: at fixed
 (zero) network distance, tail RTT grows ~15× while the analytical model's
 prediction stays constant. This is the first evidence for the claim in the
-README's Positioning section — that the term placement models omit (measured
+README's Positioning section - that the term placement models omit (measured
 load→latency) is not a rounding error but the dominant one under load: p95 up
 ~15×, and container CPU pinned at the 0.5-core cap exactly where it explodes,
 which is the causal link (no spare compute → ticks run long → actions queue).
 
-Scope, stated precisely. This proves the model is *incomplete* — it omits a
+Scope, stated precisely. This proves the model is *incomplete* - it omits a
 term that moves latency by ~15× at a single node. It does **not** yet prove the
 model picks the *wrong node*: that needs two nodes where the model ranks
 near-and-loaded above far-and-idle while measured RTT ranks them the other way
 (the crossover). And it does not yet isolate how much of the tail is server
-queueing versus load-generator contention, since bot and server share a host —
+queueing versus load-generator contention, since bot and server share a host -
 that needs the concurrent probe-RTT baseline. Both are the remaining work
 before the wrong-node claim can be made.

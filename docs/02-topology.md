@@ -20,7 +20,7 @@ What the testbed is, why it looks like this, and what every line of
 ```
 
 Five nodes, four point-to-point links. Four candidates means the question is a
-**ranking**, not an A/B — which is what a placement algorithm actually has to
+**ranking**, not an A/B - which is what a placement algorithm actually has to
 produce.
 
 | Node | Role | CPU | Distance (`ladder`) |

@@ -20,4 +20,4 @@ not installed, so they run anywhere.
 
 **Both carry hard-coded numbers.** If the node table, the netem profile or the
 measured capacities change, edit the tables at the top of the relevant script
-and re-run it — nothing here reads the testbed live.
+and re-run it - nothing here reads the testbed live.

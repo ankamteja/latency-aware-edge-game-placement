@@ -1,6 +1,6 @@
 # De-risk experiment: RTT vs load at zero network distance
 
-Same server, same localhost, zero network change — only the number of bots
+Same server, same localhost, zero network change - only the number of bots
 changes. Any RTT increase is invisible to the analytical model
 (`latency = propagation + size/bandwidth`), which predicts identical latency
 for both runs.
@@ -8,8 +8,8 @@ for both runs.
 ## Setup
 
 - Paper 1.21.4 (`itzg/minecraft-server`), `--cpus=0.5`, localhost
-- `connection-throttle: -1` (bukkit.yml) — default 4000 ms kicks staggered bot joins
-- bots opped — vanilla spam-kick (`disconnect.spam`) fires on 1 msg/s chat once the
+- `connection-throttle: -1` (bukkit.yml) - default 4000 ms kicks staggered bot joins
+- bots opped - vanilla spam-kick (`disconnect.spam`) fires on 1 msg/s chat once the
   server falls behind on ticks; ops are exempt
 - `max-players=100` (default 20 caps the experiment)
 - First 5 samples per run discarded (cold start)
@@ -28,9 +28,9 @@ for both runs.
 
 Mid-run server state at 25 bots:
 
-- MSPT avg/max (10 s window): **74.0 / 202.0 ms** — tick budget is 50 ms, the
+- MSPT avg/max (10 s window): **74.0 / 202.0 ms** - tick budget is 50 ms, the
   server cannot hold 20 Hz (1-minute max: 1,397 ms)
-- Container CPU: **49.86%** — pinned exactly at the 0.5-CPU cap (compute-starved,
+- Container CPU: **49.86%** - pinned exactly at the 0.5-CPU cap (compute-starved,
   not idle)
 - Zero kicks, all 25 bots reporting
 

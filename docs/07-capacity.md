@@ -1,7 +1,7 @@
 # 7. Capacity, and why utilization is the unit that travels
 
 Everything else in this project measures *latency*. This chapter measures
-*capacity* — how much load a node can absorb before latency starts to matter —
+*capacity* - how much load a node can absorb before latency starts to matter -
 because without it none of the other numbers can be compared across nodes.
 
 ---
@@ -13,7 +13,7 @@ laptop and almost meaningless anywhere else: half a core of an i7-14700HX does
 far more work per second than half a core of a small edge box. A curve plotted
 against *CPU quota* only describes the machine it was measured on.
 
-The unit that travels is **utilization** — the fraction of a node's own
+The unit that travels is **utilization** - the fraction of a node's own
 capacity currently in use, 0 to 1. It is also the unit the queueing law is
 written in:
 
@@ -23,7 +23,7 @@ queueing delay  is proportional to  1 / (1 - utilization)
 
 At u = 0.5 the factor is 2. At u = 0.9 it is 10. At u = 0.99 it is 100. Two
 nodes at the same utilization sit at the same point on that curve regardless of
-how fast their CPUs are — which is exactly the property a placement model needs
+how fast their CPUs are - which is exactly the property a placement model needs
 if it is going to rank heterogeneous nodes.
 
 To divide by capacity, you first have to measure capacity. That is what
@@ -46,8 +46,8 @@ queues behind the overrun.
 
 The important part: **50 ms comes from the game's design, not from the CPU.**
 A node whose MSPT is 60 ms is in trouble whether it is a laptop, a Raspberry Pi
-or a rack server. That makes "players held before MSPT exceeds 50 ms" —
-call it **N_max** — a capacity number that means the same thing everywhere, and
+or a rack server. That makes "players held before MSPT exceeds 50 ms" -
+call it **N_max** - a capacity number that means the same thing everywhere, and
 `players / N_max` a utilization estimate that is comparable across nodes.
 
 ---
@@ -125,13 +125,13 @@ The full ladders are in `results/raw/capacity/<node>.csv`. `edge1`:
 
 Three things worth reading off this:
 
-- **The shape is flat, then vertical.** Going from 8 to 40 players — a 5×
-  increase in load — moves tick time by under 10 ms. Going from 40 to 60 moves
+- **The shape is flat, then vertical.** Going from 8 to 40 players - a 5×
+  increase in load - moves tick time by under 10 ms. Going from 40 to 60 moves
   it by 52 ms. This is `1/(1 − u)` behaviour, and it is why a linear or
   closed-form model fitted to the comfortable region predicts nothing useful
   about the region that actually matters.
-- **The knee is where the CPU cap is.** `edge1` reaches 50% — one half of one
-  core, exactly its quota — between 40 and 50 players, and that is precisely
+- **The knee is where the CPU cap is.** `edge1` reaches 50% - one half of one
+  core, exactly its quota - between 40 and 50 players, and that is precisely
   where MSPT turns. Cause and effect, recorded side by side.
 - **Capacity scales roughly linearly with CPU**: about **100 players per core**
   for this workload. `edge1` at 0.5 core holds 50; `edge2` at 1 core holds 100.
@@ -161,7 +161,7 @@ utilization ≈ players / N_max
 
 30 players on `edge1` is u ≈ 0.60. The same 30 players on `edge2` is u ≈ 0.30,
 and on `cloud` below 0.10. Same offered load, three very different places on
-the queueing curve — which is the whole point: **a placement model that ranks
+the queueing curve - which is the whole point: **a placement model that ranks
 by distance sees these three as identical, and they are not.**
 
 A second, continuous estimate is available for free in every collection run,
@@ -193,7 +193,7 @@ Same node, same 5 players, same window:
 | warm world | 7 ms | 60 ms | 21 | 5.1 ms |
 
 A cold node looks saturated when it is merely busy, and the error lands hardest
-on the weakest node — the one the conclusion depends on. Run `./warmup.sh`
+on the weakest node - the one the conclusion depends on. Run `./warmup.sh`
 first. Details in [06-troubleshooting.md §6.2b](06-troubleshooting.md).
 
 ---

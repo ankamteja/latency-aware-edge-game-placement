@@ -17,11 +17,11 @@ first matters, and every command is spelled out flag by flag.
 | 7 | [07-capacity.md](07-capacity.md) | How each node's capacity is measured, why utilization is the portable unit, and the numbers it produced. |
 | 8 | [08-results.md](08-results.md) | The analysis: the load grid, rank inversion, how well each latency model predicts, and each model's placement deployed and measured. With its limits. |
 
-[diagrams/](diagrams/) holds two generated figures — the testbed architecture
+[diagrams/](diagrams/) holds two generated figures - the testbed architecture
 with the probe ladder, and a map of every source file. Both are produced by a
 script so they can be regenerated instead of going stale.
 
-[HANDOFF.md](HANDOFF.md) is the one-file summary of the whole project — what
+[HANDOFF.md](HANDOFF.md) is the one-file summary of the whole project - what
 exists, what it showed, what will bite you, and the standing constraints.
 Start there if you are picking this up cold.
 

@@ -17,12 +17,12 @@ From a cold machine to raw data on disk.
 
 The testbed pins containers to host cores 0-1, 2-3, 4-6, 7-11 and 12-27. On a
 machine with fewer cores, edit the `cpu-set` values in
-`topology/edge-cloud.clab.yml` first, keeping every range disjoint — `verify.sh`
+`topology/edge-cloud.clab.yml` first, keeping every range disjoint - `verify.sh`
 checks that they are.
 
 **Memory is the binding constraint, not CPU.** Four Java servers need roughly
 5-6 GB resident. If the host runs short, the kernel pages parts of their heaps
-to disk and a tick that touches one stalls on a disk read — latency the
+to disk and a tick that touches one stalls on a disk read - latency the
 experiment would wrongly blame on server load. `verify.sh` fails the run if any
 node has more than 64 MB swapped. Close browsers and other large applications
 before a long collection.
@@ -37,7 +37,7 @@ cd topology
 ./up.sh ladder        # build client image, deploy, wait, apply netem, verify
 ```
 
-`up.sh` takes a netem profile: `ladder` (default), `flat` or `near` — see
+`up.sh` takes a netem profile: `ladder` (default), `flat` or `near` - see
 [02-topology.md](02-topology.md). Switching profile afterwards needs no
 redeploy, just `./netem.sh flat`.
 
@@ -67,7 +67,7 @@ ALL CHECKS PASSED
 a core. The others take a few seconds.
 
 The first `verify.sh` after a fresh deploy often shows an inflated `max` and
-`mdev` on the ping lines — that is the first packet doing ARP resolution. Run it
+`mdev` on the ping lines - that is the first packet doing ARP resolution. Run it
 a second time for the steady numbers.
 
 **If anything says FAIL, stop.** Go to
@@ -77,7 +77,7 @@ that produces plausible-looking but worthless numbers.
 
 ---
 
-## 5.1b Warm the worlds — required, not optional
+## 5.1b Warm the worlds - required, not optional
 
 ```bash
 cd ../controller
@@ -87,7 +87,7 @@ cd ../controller
 Each node boots from a copy of the same server directory, whose world is only
 generated where an earlier session walked. The first bots to head outward make
 the server *generate* terrain, which is far more expensive than simulating an
-existing chunk — so a cold node looks saturated when it is merely busy, and the
+existing chunk - so a cold node looks saturated when it is merely busy, and the
 error lands hardest on the weakest node.
 
 | same node, same 5 players | p50 | p95 | CPU % | MSPT |
@@ -95,8 +95,8 @@ error lands hardest on the weakest node.
 | cold world | 43 ms | 474 ms | 50 (capped) | 66.0 ms |
 | warm world | 7 ms | 60 ms | 21 | 5.1 ms |
 
-Warm-up loads every node simultaneously — their cpu-sets are disjoint, so they
-do not compete — then `save-all`s the generated chunks to disk. Full write-up in
+Warm-up loads every node simultaneously - their cpu-sets are disjoint, so they
+do not compete - then `save-all`s the generated chunks to disk. Full write-up in
 [06-troubleshooting.md §6.2b](06-troubleshooting.md).
 
 ## 5.1c Measure capacity

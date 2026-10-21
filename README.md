@@ -12,13 +12,13 @@ inside the server can exceed the network delay that edge placement was supposed
 to save. And since these algorithms are almost always evaluated in simulators
 built on the same model, the error never shows up.
 
-Server load is not ignored in practice — it is just wired to a different job
+Server load is not ignored in practice - it is just wired to a different job
 than placement latency. Autoscalers and load balancers read it as a *threshold*
 (scale out, or route away, when CPU crosses a line). Cost models read it as a
 roughly *linear* billing term. Queueing-aware placement does put a delay term in
 the objective, but from an *analytical* M/M/1-style model, not from measurement.
 In every one of these the load→latency relationship is either reacted to after
-the placement decision or assumed in closed form — never learned from a real
+the placement decision or assumed in closed form - never learned from a real
 workload and fed back into the placement ranking itself. This project targets
 exactly that seam, for tail-sensitive interactive workloads (gaming), where the
 p99 the analytical model omits is the number that actually decides whether the
@@ -36,25 +36,25 @@ load→latency curve has the flat-then-vertical shape the formula cannot express
 ## Method
 
 The same network path is measured at four depths, concurrently, under the same
-load — so the delay can be attributed to a layer instead of guessed at:
+load - so the delay can be attributed to a layer instead of guessed at:
 
 | Probe | Path it exercises |
 |---|---|
-| **ICMP ping** | kernel to kernel — network only. This is what the analytical model predicts. |
+| **ICMP ping** | kernel to kernel - network only. This is what the analytical model predicts. |
 | **TCP handshake** | network + the server host's accept path |
 | **server status ping** | network + the server process answering a request |
 | **in-game RTT** | network + the server's single main game thread (chat echo, via mineflayer) |
 
 The gap between the first and the last is model error. If ICMP stays flat while
-in-game RTT climbs, the extra delay is server-side queueing — the term the
-formula has no place for — and it is not the emulated link or the load
+in-game RTT climbs, the extra delay is server-side queueing - the term the
+formula has no place for - and it is not the emulated link or the load
 generator. Alongside these, the server's own counters (MSPT, TPS, container
 CPU, player count) are sampled throughout, so the cause is recorded next to the
 effect. Details in [docs/04-metrics.md](docs/04-metrics.md).
 
 ## Positioning
 
-The pieces already exist — separately. Server load is measured everywhere; it is
+The pieces already exist - separately. Server load is measured everywhere; it is
 just never assembled into a *measured* load→latency term inside the placement
 decision:
 
@@ -66,8 +66,8 @@ decision:
 | Queueing-aware placement | analytical M/M/1 delay | at placement | modeled, not measured |
 
 Two reasons the join is missing. First, the load→latency curve is nonlinear and
-tail-heavy — delay grows like `1/(1 − utilization)`, flat until the node is
-nearly saturated, then vertical — so it does not drop cleanly into a closed-form
+tail-heavy - delay grows like `1/(1 − utilization)`, flat until the node is
+nearly saturated, then vertical - so it does not drop cleanly into a closed-form
 placement objective, and the simulators used to evaluate placement inherit the
 same load-blind model. Second, cloud nodes rarely saturate (you autoscale first),
 so the coupling stayed invisible; edge nodes are small and capped and *cannot*
@@ -76,7 +76,7 @@ help.
 
 **Novelty, stated narrowly (and defensibly):** learn the load→latency curve
 *empirically* from a real interactive workload, then use it as the latency term
-that *ranks* candidate nodes — rather than reacting to load after placement, or
+that *ranks* candidate nodes - rather than reacting to load after placement, or
 assuming its shape in closed form. The claim is not "nobody uses load"; it is
 "nobody measures the load→latency relationship for a tail-sensitive interactive
 workload and puts it into the placement ranking."
@@ -94,7 +94,7 @@ bots/         bot.js load generator, probe.js latency probes
 topology/     containerlab edge-cloud testbed + bring-up/verify scripts
 controller/   collect.sh (grid cells), deploy.sh (one placement, all nodes at once),
               grid.sh, deploy_plan.sh, warmup.sh, capacity.sh
-dataset/      build_dataset.py — joins the raw streams into labelled rows
+dataset/      build_dataset.py - joins the raw streams into labelled rows
 placement/    latency models, placement algorithms, the deploy-and-score experiment
 model/        evaluate.py (prediction + ranking tests), figures.py
 data/         the measured dataset: dataset.csv (30 s windows), cells.csv
@@ -116,11 +116,11 @@ Four candidates, so the question is a *ranking*, not an A/B. Which IP the bots
 dial is the placement decision.
 
 Capacity is structural (it needs a redeploy, so it lives in the topology);
-distance is a runtime knob — `./netem.sh ladder` gives the realistic tradeoff
+distance is a runtime knob - `./netem.sh ladder` gives the realistic tradeoff
 where the closest node is the weakest, `./netem.sh flat` puts every edge at the
 same distance so capacity can be isolated from distance, with no redeploy.
 
-Every number above is measured with `ping`, 0% loss, mdev < 0.1 ms — never the
+Every number above is measured with `ping`, 0% loss, mdev < 0.1 ms - never the
 configured value.
 
 ## Running it
@@ -134,10 +134,10 @@ cd ../controller && ./warmup.sh                   # generate terrain, discard
 
 `warmup.sh` is not optional. A freshly copied world makes a healthy node look
 saturated, because the server is *generating* terrain rather than simulating
-it — and it biases the weakest node hardest. Cold vs warm, same node and load:
+it - and it biases the weakest node hardest. Cold vs warm, same node and load:
 p95 474 ms vs 60 ms.
 
-`up.sh` refuses to hand over a testbed that does not verify — CPU caps read
+`up.sh` refuses to hand over a testbed that does not verify - CPU caps read
 from `/sys/fs/cgroup/cpu.max`, netem qdiscs present, and the RTT actually
 measured with `ping`. Full procedure in [docs/05-runbook.md](docs/05-runbook.md);
 every command explained in [docs/03-commands.md](docs/03-commands.md).
@@ -196,16 +196,16 @@ only one comparable across nodes of different size.
 | cloud | 4 cores | 40.29 ms | > 100 | 9.3 ms | none ≤ 100 |
 
 Capacity scales at roughly **100 players per core**, and every node's tick time
-turns vertical exactly where its CPU reaches its own quota — flat, then a knee,
+turns vertical exactly where its CPU reaches its own quota - flat, then a knee,
 then a cliff. edge1: 8 → 40 players moves MSPT only 6.9 → 16.5 ms; 40 → 60
 takes it to 69.1 ms. ICMP RTT never moved across any of it.
 
 edge3 and cloud never saturate: the 100-player ceiling is the testbed's
 (`max-players`, and the load generator), not theirs.
 
-### Two-node testbed — the model's ranking inverts
+### Two-node testbed - the model's ranking inverts
 
-> **Superseded.** The run below is confounded by cold-world chunk generation —
+> **Superseded.** The run below is confounded by cold-world chunk generation -
 > see the correction in [results/sweep.md](results/sweep.md). The inversion is
 > still expected, but its magnitude and the player count at which it appears
 > are being re-measured on warm worlds. Treat the table as historical.
@@ -221,17 +221,17 @@ p95 in-game RTT (ms), edge at 5.1 ms network distance and 0.5 core, cloud at
 | measured winner | edge | edge | **cloud** | **cloud** | **cloud** | **cloud** |
 
 The analytical model ranks by distance alone, so it picks edge at every load,
-by a fixed 35 ms. From 10 players on it is picking the worse node — by 45× at
+by a fixed 35 ms. From 10 players on it is picking the worse node - by 45× at
 20 players. Meanwhile ICMP RTT on the same links never moved: 5.07–5.10 ms and
 40.10 ms in every cell, saturated or idle. The cause sits next to the effect in
 the same data: edge CPU pins at its 0.5-core cap from 30 bots, and MSPT crosses
-the 50 ms tick budget between 30 and 40 — exactly where latency becomes seconds.
+the 50 ms tick budget between 30 and 40 - exactly where latency becomes seconds.
 
 One run, one host, with capacities chosen rather than discovered. It is first
 evidence, not the analysis. Full table and caveats:
 [docs/04-metrics.md](docs/04-metrics.md).
 
-### Single-node sweep — the term the model omits
+### Single-node sweep - the term the model omits
 
 Full load sweep, single server on localhost, only the bot count changed
 (so network distance is fixed at zero):
@@ -251,7 +251,7 @@ started from a freshly copied world and the grid ramped upward, so each cell
 pushed bots into terrain the previous ones never reached. The server was
 *generating* chunks as well as simulating players, and the amount of generation
 rose together with the player count. On a warm world the same 0.5-core node
-holds 50 players before breaking the tick budget — it was not close to
+holds 50 players before breaking the tick budget - it was not close to
 saturated at 40. Full correction in [results/sweep.md](results/sweep.md);
 the artefact and its fix in
 [docs/06-troubleshooting.md §6.2b](docs/06-troubleshooting.md). Earlier de-risk:
@@ -288,14 +288,14 @@ the artefact and its fix in
 
 Two generations of data live under `results/`:
 
-- `results/raw/*.log` — the single-node sweeps, bot RTT only, one file per run.
+- `results/raw/*.log` - the single-node sweeps, bot RTT only, one file per run.
   Written up in [sweep.md](results/sweep.md) and [derisk.md](results/derisk.md).
-- `results/raw/<tag>/<target>-<N>bots/` — the two-node testbed. Four raw
+- `results/raw/<tag>/<target>-<N>bots/` - the two-node testbed. Four raw
   streams per cell (`bot.csv`, `probe.csv`, `icmp.txt`, `server.csv`) plus a
   `meta.json` recording the CPU cap, the netem delay, the player count actually
   held, and the exact millisecond boundaries of the idle and steady windows.
 
-Nothing is aggregated at collection time — see
+Nothing is aggregated at collection time - see
 [docs/04-metrics.md](docs/04-metrics.md) for why, and for how to read a run
 with nothing but `grep` and `sort`.
 
@@ -309,4 +309,4 @@ failure hit so far with its fix ([06](docs/06-troubleshooting.md)).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
