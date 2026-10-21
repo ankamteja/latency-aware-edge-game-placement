@@ -19,3 +19,4 @@ topology/nodes/
 
 # collector scratch space (copied into results/raw/ at the end of a run)
 topology/out/
+site/
