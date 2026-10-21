@@ -147,7 +147,52 @@ model has never seen (median abs error / typical factor off):
 | cloud | 5.8 / 1.18x | 3.3 / 1.13x | **1.6 / 1.05x** |
 
 The learned model transfers to an unseen node size best on three of four
-nodes; on edge2 the closed form transfers better. Figure:
+nodes; on edge2 the closed form transfers better.
+
+**Every standard score.** The models are regressors, so accuracy and F1 only
+exist once the prediction is turned into a decision. The decision placement
+makes is "will this node break a latency budget at this load?" - positive =
+measured p95 above the threshold. `python -m model.metrics` writes all of it
+to `results/model/metrics.md` and `metrics.csv`; cross-replicate, 50 cells,
+all out of sample:
+
+| model | MAE | RMSE | MAPE | R² (log10) | Spearman ρ |
+|---|---|---|---|---|---|
+| analytical | 768 ms | 2 694 ms | 34% | -0.48 | 0.46 |
+| queueing | 6 547 ms | 18 818 ms | 3 006% | 0.28 | 0.93 |
+| learned | **469 ms** | **1 762 ms** | **18%** | **0.84** | **0.94** |
+
+| budget | model | accuracy | precision | recall | F1 | balanced acc. |
+|---|---|---|---|---|---|---|
+| p95 > 50 ms (12 of 50 cells) | analytical | 0.76 | 0.00 | 0.00 | 0.00 | 0.50 |
+| | queueing | 0.84 | 0.83 | 0.42 | 0.56 | 0.70 |
+| | learned | **0.92** | 0.83 | **0.83** | **0.83** | **0.89** |
+| p95 > 100 ms (6 of 50 cells) | analytical | 0.88 | 0.00 | 0.00 | 0.00 | 0.50 |
+| | queueing | **0.96** | 0.83 | **0.83** | **0.83** | **0.91** |
+| | learned | 0.94 | 0.80 | 0.67 | 0.73 | 0.82 |
+
+Ranking (one match, four load levels): top-1 accuracy analytical 0.75,
+queueing 1.00, learned 1.00.
+
+How to read this:
+
+- **The analytical model's 76-88% accuracy is the accuracy paradox.** It
+  never predicts a violation - it has no load term - so it is "right" on
+  every healthy cell and catches none of the 12 that break the budget:
+  recall 0, F1 0. Accuracy alone would make it look acceptable; F1 and
+  balanced accuracy (0.50, a coin flip) show it is useless for this
+  decision.
+- **Neither load-aware model wins everywhere.** The learned model detects
+  the 50 ms violations far better (F1 0.83 vs 0.56: the queueing model
+  misses cells that are slow but not yet near u = 1). At 100 ms the queueing
+  model is slightly better (F1 0.83 vs 0.73). With 6 and 12 positive cells,
+  a difference of one or two cells moves these numbers by 0.1-0.2: treat
+  them as indicative, not as a ranking.
+- **The thresholds are our choice.** 50 ms is one tick of the game's 20 Hz
+  loop; 100 ms is a common playability limit. Neither is in the data.
+- **The queueing model's huge MAE and MAPE** come from its capped prediction
+  (60 s) near u = 1 where measured latency, though large, is finite. Its
+  median error (1.8 ms) and Spearman ρ (0.93) show it orders cells well. Figure:
 `figures/fig4_predicted_vs_measured.png`.
 
 ---

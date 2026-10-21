@@ -30,6 +30,9 @@ from placement.models import MODELS, PLAYERS_PER_CORE, load_nodes, load_rows
 REPO = Path(__file__).resolve().parents[1]
 OUT = REPO / "results" / "model"
 GRID_RUNS = ("grid1", "grid2")
+# A replicate collected after the models were fixed, never used for fitting:
+# the closest thing to fresh data this testbed can produce.
+HELD_OUT_RUN = "grid3"
 
 
 def cells(runs):
@@ -79,6 +82,22 @@ def cross_replicate(nodes):
             errs += e
         res[name] = summary(errs)
         detail += errs
+    return res, detail
+
+
+def held_out(nodes):
+    """Fit on both grid replicates, predict the held-out replicate."""
+    test = cells([HELD_OUT_RUN])
+    if not test:
+        return None, []
+    res, detail = {}, []
+    rows = load_rows(runs=list(GRID_RUNS))
+    for name in MODELS:
+        e = errors(fit(name, rows), test, nodes)
+        for x in e:
+            x.update(model=name, split=f"grid1+grid2->{HELD_OUT_RUN}")
+        res[name] = summary(e)
+        detail += e
     return res, detail
 
 
@@ -136,6 +155,9 @@ def main():
     cr, cr_detail = cross_replicate(nodes)
     lono, lono_detail = leave_one_node_out(nodes)
     rank = ranking(nodes)
+    ho, ho_detail = held_out(nodes)
+    if ho_detail:
+        write_csv(ho_detail, OUT / "held_out.csv")
     write_csv(cr_detail, OUT / "cross_replicate.csv")
     write_csv(lono_detail, OUT / "leave_one_node_out.csv")
     write_csv(rank, OUT / "ranking.csv")
@@ -149,6 +171,12 @@ def main():
              "|---|---|---|---|---|"]
     for name, s in cr.items():
         lines.append(f"| {name} | {s['n']} | {s['mae_ms']} | {s['median_abs_err_ms']} | {s['typical_factor']}x |")
+    if ho:
+        lines += ["", f"## Held-out replicate (fit on grid1+grid2, predict {HELD_OUT_RUN})", "",
+                  "| model | cells | MAE (ms) | median abs err (ms) | typical factor off |",
+                  "|---|---|---|---|---|"]
+        for name, s in ho.items():
+            lines.append(f"| {name} | {s['n']} | {s['mae_ms']} | {s['median_abs_err_ms']} | {s['typical_factor']}x |")
     lines += ["", "## Leave one node out (median abs err ms / typical factor off)", "",
               "| held-out node | " + " | ".join(MODELS) + " |",
               "|---|" + "---|" * len(MODELS)]

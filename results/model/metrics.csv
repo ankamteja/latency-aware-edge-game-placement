@@ -1,0 +1,13 @@
+kind,model,split,accuracy,balanced_accuracy,f1,fn,fp,levels,mae_ms,mape_pct,mean_regret_ms,median_abs_err_ms,n,positives,precision,r2_log10,recall,rmse_ms,spearman_rho,threshold_ms,tn,top1_accuracy,tp
+regression,analytical,"Cross-replicate (fit one grid replicate, predict the other)",,,,,,,767.7062000000001,34.08385716575454,,5.825,50,,,-0.4849899551427581,,2693.9686476805923,0.4630864045383797,,,,
+regression,queueing,"Cross-replicate (fit one grid replicate, predict the other)",,,,,,,6546.6412,3005.953575395899,,1.8100000000000005,50,,,0.28026237444632496,,18817.553606759404,0.9324007783095655,,,,
+regression,learned,"Cross-replicate (fit one grid replicate, predict the other)",,,,,,,468.6758000000001,18.296074960979634,,0.8649999999999984,50,,,0.8386156357204406,,1762.158719619206,0.9430555014501354,,,,
+classification@50ms,analytical,"Cross-replicate (fit one grid replicate, predict the other)",0.76,0.5,0.0,12,0,,,,,,50,12,0.0,,0.0,,,50,38,,0
+classification@50ms,queueing,"Cross-replicate (fit one grid replicate, predict the other)",0.84,0.6951754385964912,0.5555555555555556,7,1,,,,,,50,12,0.8333333333333334,,0.4166666666666667,,,50,37,,5
+classification@50ms,learned,"Cross-replicate (fit one grid replicate, predict the other)",0.92,0.8903508771929824,0.8333333333333334,2,2,,,,,,50,12,0.8333333333333334,,0.8333333333333334,,,50,36,,10
+classification@100ms,analytical,"Cross-replicate (fit one grid replicate, predict the other)",0.88,0.5,0.0,6,0,,,,,,50,6,0.0,,0.0,,,100,44,,0
+classification@100ms,queueing,"Cross-replicate (fit one grid replicate, predict the other)",0.96,0.9053030303030303,0.8333333333333334,1,1,,,,,,50,6,0.8333333333333334,,0.8333333333333334,,,100,43,,5
+classification@100ms,learned,"Cross-replicate (fit one grid replicate, predict the other)",0.94,0.821969696969697,0.7272727272727273,2,1,,,,,,50,6,0.8,,0.6666666666666666,,,100,43,,4
+ranking,analytical,ranking,,,,,,4,,,1914.35,,,,,,,,,,,0.75,
+ranking,queueing,ranking,,,,,,4,,,0.0,,,,,,,,,,,1.0,
+ranking,learned,ranking,,,,,,4,,,0.0,,,,,,,,,,,1.0,
