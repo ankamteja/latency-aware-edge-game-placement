@@ -269,25 +269,27 @@ fixed 13-minute schedule (up to 140 players arriving and leaving the same way
 for both), and a 9-minute run in which edge1's CPU is halved at 220 s.
 
 \begin{center}\small
-\begin{tabularx}{\linewidth}{@{}Xrrrr@{}}
+\begin{tabularx}{\linewidth}{@{}Xrrr@{}}
 \toprule
-\textbf{Run (2026-10-21), worst node's p95} & \textbf{median} & \textbf{over 100 ms} & \textbf{max} & \textbf{moves} \\
+\textbf{Worst node's p95, 3 runs each, median [lowest, highest]} & \textbf{median} & \textbf{over 100 ms} & \textbf{moves} \\
 \midrule
-Standard, analytical controller & 1\,058 ms & 53\% & 19.6 s & 0 \\
-Standard, queueing controller & 166 ms & 53\% & 5.7 s & 11 \\
-Standard, learned controller & 33 ms & 18\% & 817 ms & 10 \\
+Standard, analytical controller & 1.1 s [0.08, 4.5] & 53\% [46, 62] & 0 \\
+Standard, queueing controller & 99 ms [72, 166] & 50\% [46, 53] & 11 \\
+Standard, learned controller & 39 ms [33, 47] & 33\% [18, 41] & 10 \\
 \addlinespace
-CPU cut, queueing & 2.6 s & 83\% & 33 s & 4 \\
-CPU cut, learned (offline), 2 runs & 0.5, 7.7 s & 74, 82\% & 2.6, 31 s & 4 \\
-CPU cut, learned, corrected live, 2 runs & 24, 43 ms & 2, 14\% & 0.2, 4.5 s & 8, 12 \\
+CPU cut, queueing, after the cut & & 100\% [99, 100] & 4 \\
+CPU cut, learned (offline), after the cut & & 100\% [99, 100] & 4 \\
+CPU cut, learned corrected live, after the cut & & 6\% [4, 13] & 12 [8, 12] \\
 \bottomrule
 \end{tabularx}
 \end{center}
-Queueing loads edge2 to 80 players, past its knee; learned stops at 70.
-After the CPU cut, queueing and the offline learned model keep 40 players on
-the slowed edge1; the live-corrected model takes it down to 20 or fewer within
-30 s. Its two runs differ (2\% and 14\%): in the second, its own moves and a
-re-probe of edge1 after its memory expired cost the extra time.
+Queueing loads edge2 to 80 players, past its knee, in every run; learned
+stops at 70 in every run. After the CPU cut, queueing and the offline learned
+model keep 40 players on the slowed edge1. The live-corrected model moves
+players off, but be precise if asked: it also learns from players logging in,
+so in two of its three runs it had already left edge1 with 0 and 10 players
+before the cut. Only the run with 30 players on edge1 at the cut shows it
+detecting the change (a match moved off 27 s later).
 The graphs of both comparisons are figures 6 and 7 in the repository's
 \texttt{figures/} folder.
 
