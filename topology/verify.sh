@@ -122,6 +122,16 @@ swap=$(free -m | awk '/^Swap:/{print $3}')
 [ "$avail" -ge 1500 ] && ok "${avail}M available, ${swap}M swap in use" \
                       || bad "only ${avail}M available (${swap}M swap in use) - close other apps before collecting"
 
+echo "== host power mode (every clean run used Performance)"
+# A capped node runs in short bursts, so the governor sees a mostly idle core
+# and keeps its clock low. Under the "balanced" power mode edge1's cores sat at
+# 0.8-2 GHz under load and the same 20 players cost 42% CPU instead of 14-18%,
+# which moved every knee. Unplugging the charger drops GNOME out of
+# Performance, and plugging it back in does not restore it.
+prof=$(tuned-adm active 2>/dev/null | awk '{print $NF}')
+[ "$prof" = "throughput-performance" ] && ok "tuned profile $prof" \
+  || bad "tuned profile '${prof:-unknown}', not throughput-performance - set Power Mode to Performance"
+
 echo "== server swap (a swapped-out heap page faulting mid-tick inflates MSPT)"
 # The servers are Java processes with multi-hundred-MB heaps. If the host runs
 # short of memory the kernel pages parts of that heap to disk, and the next

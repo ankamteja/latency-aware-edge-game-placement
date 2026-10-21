@@ -34,7 +34,9 @@ Discarded, and kept only as evidence of the artefact that spoiled them:
 | kept as | why it is not used |
 |---|---|
 | `grid1-daynight`, `grid2-daynight` | measured with the day/night cycle running: hostile mobs at night (§6.18) |
-| `grid1-edge1-contended` | edge1 measured while the host was in heavy interactive use: 2.4x the CPU per player of every other edge1 measurement (§8.6) |
+| `grid1-edge1-contended` | edge1 measured with the laptop's power mode on Balanced (it was switched to Performance 13 minutes into the run) and the host in interactive use: 2.4x the CPU per player of every other edge1 measurement (§8.6) |
+| `grid3-balanced` | a full third replicate measured after the power mode fell back to Balanced: 2-3x the CPU per player on every node, edge1 collapsing at 20 players instead of 50-60 (§8.6) |
+| `probe-balanced`, `probe-performance` | the same edge1 20-player cell, minutes apart, in each power mode: 42.4% vs 17.8% CPU (§8.6) |
 | `grid-a` | one bot process for all bots: the client's event loop was measured (§6.16) |
 
 The dataset (`data/dataset.csv`, `data/cells.csv`) is built from `grid1`,
@@ -252,14 +254,21 @@ learned model's answer on clean data, so they are not in the table above.
   replicates give a spread, not a confidence interval. At the knees (edge1 at
   50, edge2 at 80) the replicates disagree by 6-80x, so the exact player count
   of a knee is not established; that a knee exists, and roughly where, is.
-- **Host contention is bounded, not eliminated.** Cpusets keep the servers
-  apart from each other and from the load generator, but nothing stops the
-  host's own processes running on the servers' cores without root. The first
-  edge1 pass of `grid1` ran while the laptop was in heavy use: the same work
-  cost 2.4x the CPU (8.4% vs 2.6-3.5% at one player) and moved edge1's knee
-  from 50-60 players to 20-30. Re-run on a quiet host, it matched `grid2`
-  within a few ms. It is kept as `grid1-edge1-contended`, and it is evidence
-  that a shared host can itself be the load the model is blind to.
+- **The host's power mode sets the servers' capacity.** A node capped at
+  half a core runs in short bursts, so the CPU governor sees a mostly idle
+  core and keeps its clock low. Every clean run was measured with the laptop
+  in Performance mode (tuned `throughput-performance`). In Balanced mode
+  edge1's cores sat at 0.8-2 GHz under load (5.3 GHz maximum) and the same
+  work cost 2-3x the CPU: edge1 with 20 players used 42.4% of a core instead
+  of 14-18%, and its knee moved from 50-60 players to under 20. This is what
+  spoiled the first edge1 pass of `grid1` (the mode was switched to
+  Performance 13 minutes into it; it was first blamed on interactive use of
+  the laptop, which was also happening) and a whole third replicate
+  (`grid3-balanced`, measured after the charger was unplugged and the mode
+  fell back to Balanced). Two probes minutes apart, same cell, one per mode,
+  confirm it. `topology/verify.sh` now fails unless the mode is Performance.
+  It is also evidence for the main claim: the same node, same players, same
+  network, and a change no latency formula sees moved the knee by 3x.
 - **Capacities were chosen, not discovered.** 0.5 / 1 / 2 / 4 cores and 5 / 15
   / 30 / 40 ms were picked to make the trade-off exist. The claim is "an
   inversion exists, is large, and a load-aware model avoids it", not "edge
